@@ -177,9 +177,14 @@ class _TopupScreenState extends State<TopupScreen> {
           const Divider(height: 16),
           InfoRow(label: 'Minimum Topup', value: CurrencyFormatter.format(_config!.minAmount)),
           InfoRow(label: 'Biaya Admin', value: _config!.adminFee == 0 ? 'Gratis' : CurrencyFormatter.format(_config!.adminFee)),
-          InfoRow(label: 'Bank', value: _config!.paymentInfo['bank'] ?? '-'),
-          InfoRow(label: 'No. Rekening', value: _config!.paymentInfo['account_number'] ?? '-'),
-          InfoRow(label: 'Nama', value: _config!.paymentInfo['account_name'] ?? '-'),
+          if (_config!.isManual && _config!.paymentInfo != null) ...[
+            InfoRow(label: 'Bank', value: _config!.paymentInfo!['bank'] ?? '-'),
+            InfoRow(label: 'No. Rekening', value: _config!.paymentInfo!['account_number'] ?? '-'),
+            InfoRow(label: 'Nama', value: _config!.paymentInfo!['account_name'] ?? '-'),
+          ] else ...[
+            const InfoRow(label: 'Pembayaran', value: 'GoPay / QRIS'),
+            const InfoRow(label: 'Konfirmasi', value: 'Otomatis'),
+          ],
         ],
       ),
     );
@@ -188,6 +193,8 @@ class _TopupScreenState extends State<TopupScreen> {
   Widget _buildSuccess() {
     final p = _createdPayment!;
     final info = p.paymentInfo;
+    final isMidtrans = info != null && info.containsKey('qr_url');
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -197,7 +204,7 @@ class _TopupScreenState extends State<TopupScreen> {
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: AppColors.success.withOpacity(0.1),
+              color: AppColors.success.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 44),
@@ -205,14 +212,20 @@ class _TopupScreenState extends State<TopupScreen> {
           const SizedBox(height: 16),
           const Text('Topup Berhasil Dibuat!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
           const SizedBox(height: 8),
-          const Text('Transfer ke rekening berikut dan konfirmasi via WhatsApp', style: TextStyle(color: AppColors.textSecondary), textAlign: TextAlign.center),
+          Text(
+            isMidtrans
+                ? 'Scan QR code atau buka aplikasi GoPay untuk membayar'
+                : 'Transfer ke rekening berikut dan konfirmasi via WhatsApp',
+            style: const TextStyle(color: AppColors.textSecondary),
+            textAlign: TextAlign.center,
+          ),
           const SizedBox(height: 24),
           AppCard(
             child: Column(
               children: [
                 InfoRow(label: 'Order ID', value: p.orderId),
                 InfoRow(label: 'Jumlah', value: CurrencyFormatter.format(p.grossAmount), bold: true),
-                if (info != null) ...[
+                if (!isMidtrans && info != null) ...[
                   InfoRow(label: 'Bank', value: info['bank'] ?? '-'),
                   InfoRow(
                     label: 'No. Rekening',
@@ -225,46 +238,90 @@ class _TopupScreenState extends State<TopupScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 16),
-          if (info != null)
-            GestureDetector(
-              onTap: () {
-                Clipboard.setData(ClipboardData(text: info['account_number'] ?? ''));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('No. rekening disalin'), behavior: SnackBarBehavior.floating),
-                );
-              },
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppColors.info.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.copy_rounded, color: AppColors.info, size: 18),
-                    SizedBox(width: 8),
-                    Text('Salin Nomor Rekening', style: TextStyle(color: AppColors.info, fontWeight: FontWeight.w600)),
-                  ],
+          if (isMidtrans) ...[
+            const SizedBox(height: 20),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.network(
+                info['qr_url'],
+                width: 220,
+                height: 220,
+                fit: BoxFit.contain,
+                loadingBuilder: (_, child, progress) => progress == null
+                    ? child
+                    : const SizedBox(width: 220, height: 220, child: Center(child: CircularProgressIndicator())),
+                errorBuilder: (_, e, s) => const SizedBox(
+                  width: 220,
+                  height: 220,
+                  child: Center(child: Icon(Icons.qr_code_rounded, size: 80, color: AppColors.textSecondary)),
                 ),
               ),
             ),
-          const SizedBox(height: 12),
-          if (_config?.picWhatsapp != null)
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton.icon(
-                onPressed: _contactWhatsApp,
-                icon: const Icon(Icons.chat_rounded),
-                label: const Text('Konfirmasi via WhatsApp'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF25D366),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            const SizedBox(height: 8),
+            const Text(
+              'Scan dengan GoPay, OVO, Dana, atau aplikasi QRIS lainnya',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            if (info['deeplink_url'] != null)
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    final uri = Uri.parse(info['deeplink_url']);
+                    if (await canLaunchUrl(uri)) launchUrl(uri, mode: LaunchMode.externalApplication);
+                  },
+                  icon: const Icon(Icons.open_in_new_rounded),
+                  label: const Text('Buka Aplikasi GoPay'),
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
                 ),
               ),
-            ),
+          ] else ...[
+            const SizedBox(height: 16),
+            if (info != null)
+              GestureDetector(
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: info['account_number'] ?? ''));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('No. rekening disalin'), behavior: SnackBarBehavior.floating),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.info.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.copy_rounded, color: AppColors.info, size: 18),
+                      SizedBox(width: 8),
+                      Text('Salin Nomor Rekening', style: TextStyle(color: AppColors.info, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+              ),
+            const SizedBox(height: 12),
+            if (_config?.picWhatsapp != null)
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton.icon(
+                  onPressed: _contactWhatsApp,
+                  icon: const Icon(Icons.chat_rounded),
+                  label: const Text('Konfirmasi via WhatsApp'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF25D366),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+          ],
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,

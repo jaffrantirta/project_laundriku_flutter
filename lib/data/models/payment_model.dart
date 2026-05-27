@@ -87,23 +87,25 @@ class PaymentMethodInfo {
 class TopupConfig {
   final int minAmount;
   final int adminFee;
-  final String paymentMethod;
-  final Map<String, dynamic> paymentInfo;
+  final String paymentGateway;
+  final Map<String, dynamic>? paymentInfo;
   final String? picWhatsapp;
 
   const TopupConfig({
     required this.minAmount,
     required this.adminFee,
-    required this.paymentMethod,
-    required this.paymentInfo,
+    required this.paymentGateway,
+    this.paymentInfo,
     this.picWhatsapp,
   });
+
+  bool get isManual => paymentGateway == 'manual';
 
   factory TopupConfig.fromJson(Map<String, dynamic> json) => TopupConfig(
         minAmount: json['min_amount'] ?? 25000,
         adminFee: json['admin_fee'] ?? 0,
-        paymentMethod: json['payment_method'] ?? '',
-        paymentInfo: json['payment_info'] ?? {},
+        paymentGateway: json['payment_gateway'] ?? '',
+        paymentInfo: json['payment_info'],
         picWhatsapp: json['pic_whatsapp'],
       );
 }
