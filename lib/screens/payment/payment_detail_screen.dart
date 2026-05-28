@@ -43,7 +43,7 @@ class _PaymentDetailScreenState extends State<PaymentDetailScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Detail Pembayaran')),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? _buildSkeleton()
           : _transaction == null
               ? const EmptyState(title: 'Pembayaran tidak ditemukan', icon: Icons.receipt_long_outlined)
               : RefreshIndicator(
@@ -105,6 +105,17 @@ class _PaymentDetailScreenState extends State<PaymentDetailScreen> {
           InfoRow(label: 'Dibuat', value: DateFormatter.formatDateTime(t.createdAt)),
         ],
       ),
+    );
+  }
+
+  Widget _buildSkeleton() {
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        ShimmerLoading(height: 140, borderRadius: BorderRadius.circular(20)),
+        const SizedBox(height: 16),
+        ShimmerLoading(height: 200, borderRadius: BorderRadius.circular(16)),
+      ],
     );
   }
 }

@@ -129,7 +129,7 @@ class _IdentityScreenState extends State<IdentityScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Verifikasi Identitas')),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? _buildSkeleton()
           : _showForm
               ? _buildForm()
               : _buildStatus(),
@@ -430,6 +430,25 @@ class _IdentityScreenState extends State<IdentityScreen> {
                 ],
               ),
       ),
+    );
+  }
+
+  Widget _buildSkeleton() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        ShimmerLoading(height: 120, borderRadius: BorderRadius.circular(20)),
+        const SizedBox(height: 16),
+        ShimmerLoading(height: 180, borderRadius: BorderRadius.circular(16)),
+        const SizedBox(height: 16),
+        ShimmerLoading(height: 56, borderRadius: BorderRadius.circular(12)),
+        const SizedBox(height: 12),
+        ShimmerLoading(height: 56, borderRadius: BorderRadius.circular(12)),
+        const SizedBox(height: 12),
+        ShimmerLoading(height: 56, borderRadius: BorderRadius.circular(12)),
+        const SizedBox(height: 24),
+        ShimmerLoading(height: 52, borderRadius: BorderRadius.circular(12)),
+      ],
     );
   }
 }

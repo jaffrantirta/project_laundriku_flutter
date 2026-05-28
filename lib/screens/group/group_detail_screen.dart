@@ -253,7 +253,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(title: Text(widget.businessName)),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? _buildSkeleton()
           : _business == null
               ? const EmptyState(title: 'Gagal memuat bisnis', icon: Icons.error_outline_rounded)
               : _investPayment != null
@@ -570,6 +570,25 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSkeleton() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        ShimmerLoading(height: 160, borderRadius: BorderRadius.circular(20)),
+        const SizedBox(height: 16),
+        ShimmerLoading(height: 120, borderRadius: BorderRadius.circular(16)),
+        const SizedBox(height: 12),
+        ShimmerLoading(height: 80, borderRadius: BorderRadius.circular(16)),
+        const SizedBox(height: 12),
+        ShimmerLoading(height: 56, borderRadius: BorderRadius.circular(12)),
+        const SizedBox(height: 12),
+        ShimmerLoading(height: 56, borderRadius: BorderRadius.circular(12)),
+        const SizedBox(height: 24),
+        ShimmerLoading(height: 52, borderRadius: BorderRadius.circular(12)),
+      ],
     );
   }
 }

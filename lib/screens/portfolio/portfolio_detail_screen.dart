@@ -59,9 +59,11 @@ class _PortfolioDetailScreenState extends State<PortfolioDetailScreen>
         title: Text(widget.businessName, overflow: TextOverflow.ellipsis),
         bottom: TabBar(
           controller: _tabController,
-          labelColor: AppColors.primary,
-          unselectedLabelColor: AppColors.textHint,
-          indicatorColor: AppColors.primary,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white60,
+          indicatorColor: Colors.white,
+          labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
           tabs: const [
             Tab(text: 'Detail'),
             Tab(text: 'Cicilan'),
@@ -221,7 +223,7 @@ class _PortfolioDetailScreenState extends State<PortfolioDetailScreen>
                         const Text('Jatuh Tempo Berikutnya',
                             style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
                         Text(
-                          p.nextDueDate!,
+                          DateFormatter.formatDate(p.nextDueDate),
                           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
                         ),
                       ],
@@ -316,7 +318,7 @@ class _PortfolioDetailScreenState extends State<PortfolioDetailScreen>
                         style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
                       ),
                       Text(
-                        item.dueDate ?? '-',
+                        DateFormatter.formatDate(item.dueDate),
                         style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                       ),
                     ],

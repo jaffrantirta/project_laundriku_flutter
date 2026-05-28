@@ -160,7 +160,7 @@ class _TopupScreenState extends State<TopupScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Deposit Awal')),
       body: _isLoadingConfig
-          ? const Center(child: CircularProgressIndicator())
+          ? _buildSkeleton()
           : !_isVerified
               ? _buildNotVerified()
               : _alreadyPaid
@@ -168,6 +168,23 @@ class _TopupScreenState extends State<TopupScreen> {
                   : _createdDeposit != null
                       ? _buildSuccess()
                       : _buildForm(),
+    );
+  }
+
+  Widget _buildSkeleton() {
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        ShimmerLoading(height: 110, borderRadius: BorderRadius.circular(20)),
+        const SizedBox(height: 24),
+        ShimmerLoading(height: 20, width: 160, borderRadius: BorderRadius.circular(8)),
+        const SizedBox(height: 12),
+        ShimmerLoading(height: 72, borderRadius: BorderRadius.circular(12)),
+        const SizedBox(height: 10),
+        ShimmerLoading(height: 72, borderRadius: BorderRadius.circular(12)),
+        const SizedBox(height: 28),
+        ShimmerLoading(height: 52, borderRadius: BorderRadius.circular(12)),
+      ],
     );
   }
 
