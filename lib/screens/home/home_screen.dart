@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
+import '../../data/models/portfolio_model.dart';
 import '../../data/services/api_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/home_provider.dart';
@@ -11,6 +12,7 @@ import '../payment/topup_screen.dart';
 import '../withdrawal/withdrawal_screen.dart';
 import '../business/business_screen.dart';
 import '../identity/identity_screen.dart';
+import '../portfolio/portfolio_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -20,6 +22,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  PortfolioSummaryModel? _portfolioSummary;
+
   @override
   void initState() {
     super.initState();
@@ -29,7 +33,19 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _load() async {
     final auth = context.read<AuthProvider>();
     final home = context.read<HomeProvider>();
-    await Future.wait([auth.loadBalance(), home.loadDashboard()]);
+    await Future.wait([
+      auth.loadBalance(),
+      home.loadDashboard(),
+      _loadPortfolioSummary(),
+    ]);
+  }
+
+  Future<void> _loadPortfolioSummary() async {
+    try {
+      final res = await ApiService.getPortfolio();
+      final portfolio = PortfolioModel.fromJson(res);
+      if (mounted) setState(() => _portfolioSummary = portfolio.summary);
+    } catch (_) {}
   }
 
   @override
@@ -56,6 +72,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   _buildBalanceBreakdown(),
                   const SizedBox(height: 24),
                   _buildReferralStats(),
+                  const SizedBox(height: 24),
+                  _buildPortfolioPreview(),
                   const SizedBox(height: 24),
                   _buildBusinessesPreview(),
                 ]),
@@ -576,6 +594,119 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         if (divider) const Divider(height: 1),
       ],
+    );
+  }
+
+  Widget _buildPortfolioPreview() {
+    final s = _portfolioSummary;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionHeader(
+          title: 'Portofolio Saya',
+          actionLabel: 'Lihat Detail',
+          onAction: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const PortfolioScreen()),
+          ),
+        ),
+        const SizedBox(height: 12),
+        AppCard(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const PortfolioScreen()),
+          ),
+          child: s == null
+              ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text(
+                      'Belum ada investasi aktif',
+                      style: TextStyle(color: AppColors.textSecondary),
+                    ),
+                  ),
+                )
+              : Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _portfolioStat(
+                            'Total Investasi',
+                            CurrencyFormatter.format(s.totalInvested),
+                            AppColors.primary,
+                            Icons.pie_chart_rounded,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _portfolioStat(
+                            'Total Profit',
+                            CurrencyFormatter.format(s.totalProfit),
+                            AppColors.success,
+                            Icons.trending_up_rounded,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _portfolioStat(
+                            'Aktif',
+                            '${s.activeInvestments} investasi',
+                            AppColors.info,
+                            Icons.business_center_rounded,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _portfolioStat(
+                            'Saldo Tersisa',
+                            CurrencyFormatter.compact(s.currentBalance),
+                            AppColors.accent,
+                            Icons.account_balance_wallet_rounded,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _portfolioStat(String label, String value, Color color, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label,
+                    style: const TextStyle(
+                        fontSize: 10, color: AppColors.textSecondary)),
+                Text(value,
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: color),
+                    overflow: TextOverflow.ellipsis),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

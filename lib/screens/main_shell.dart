@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../core/theme/app_theme.dart';
 import 'home/home_screen.dart';
 import 'referral/referral_screen.dart';
-import 'business/business_screen.dart';
+import 'portfolio/portfolio_screen.dart';
 import 'payment/transactions_screen.dart';
 import 'profile/profile_screen.dart';
 
@@ -19,7 +19,7 @@ class _MainShellState extends State<MainShell> {
   final _pages = const [
     HomeScreen(),
     ReferralScreen(),
-    BusinessScreen(),
+    PortfolioScreen(),
     TransactionsScreen(),
     ProfileScreen(),
   ];
@@ -63,9 +63,9 @@ class _MainShellState extends State<MainShell> {
               label: 'Referral',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.business_outlined),
-              activeIcon: Icon(Icons.business_rounded),
-              label: 'Bisnis',
+              icon: Icon(Icons.pie_chart_outline_rounded),
+              activeIcon: Icon(Icons.pie_chart_rounded),
+              label: 'Portofolio',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.receipt_long_outlined),

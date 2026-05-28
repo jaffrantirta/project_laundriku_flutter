@@ -339,6 +339,25 @@ class ApiService {
     return _parseResponse(response);
   }
 
+  // Portfolio
+  static Future<Map<String, dynamic>> getPortfolio() async {
+    final headers = await _authHeaders();
+    final response = await http.get(
+      Uri.parse('${AppConstants.apiUrl}/portfolio'),
+      headers: headers,
+    );
+    return _parseResponse(response);
+  }
+
+  static Future<Map<String, dynamic>> getPortfolioDetail(int id) async {
+    final headers = await _authHeaders();
+    final response = await http.get(
+      Uri.parse('${AppConstants.apiUrl}/portfolio/$id'),
+      headers: headers,
+    );
+    return _parseResponse(response);
+  }
+
   // Notifications
   static Future<Map<String, dynamic>> getNotifications({int page = 1}) async {
     final headers = await _authHeaders();
