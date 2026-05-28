@@ -16,5 +16,5 @@ void main() async {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-  runApp(const LaundriKuApp());
+  runApp(const BisnisKuApp());
 }

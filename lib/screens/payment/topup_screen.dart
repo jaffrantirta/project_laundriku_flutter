@@ -25,11 +25,30 @@ class _TopupScreenState extends State<TopupScreen> {
   bool _isUploadingProof = false;
   File? _proofFile;
   int _depositAmount = AppConstants.initialDepositAmount;
+  bool _alreadyPaid = false;
+  bool _isVerified = true; // assume true until loaded to avoid flicker
 
   @override
   void initState() {
     super.initState();
-    _loadExistingDeposit();
+    _init();
+  }
+
+  Future<void> _init() async {
+    await Future.wait([
+      _loadVerificationStatus(),
+      _loadExistingDeposit(),
+    ]);
+  }
+
+  Future<void> _loadVerificationStatus() async {
+    try {
+      final res = await ApiService.getVerificationStatus();
+      final data = (res['data'] ?? res) as Map<String, dynamic>;
+      if (mounted) setState(() => _isVerified = data['is_verified'] == true);
+    } catch (_) {
+      if (mounted) setState(() => _isVerified = false);
+    }
   }
 
   Future<void> _loadExistingDeposit() async {
@@ -39,6 +58,10 @@ class _TopupScreenState extends State<TopupScreen> {
       final items = data?['data'] as List<dynamic>?;
       if (items != null && items.isNotEmpty) {
         final tx = TransactionModel.fromJson(items.first as Map<String, dynamic>);
+        if (tx.status == 'success') {
+          if (mounted) setState(() => _alreadyPaid = true);
+          return;
+        }
         if (tx.status == 'pending') {
           // Existing pending deposit — reconstruct so we can show payment details
           // Re-fetch full detail via payment status
@@ -138,9 +161,59 @@ class _TopupScreenState extends State<TopupScreen> {
       appBar: AppBar(title: const Text('Deposit Awal')),
       body: _isLoadingConfig
           ? const Center(child: CircularProgressIndicator())
-          : _createdDeposit != null
-              ? _buildSuccess()
-              : _buildForm(),
+          : !_isVerified
+              ? _buildNotVerified()
+              : _alreadyPaid
+                  ? _buildAlreadyPaid()
+                  : _createdDeposit != null
+                      ? _buildSuccess()
+                      : _buildForm(),
+    );
+  }
+
+  Widget _buildNotVerified() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 96,
+              height: 96,
+              decoration: BoxDecoration(
+                color: AppColors.warning.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.badge_outlined, color: AppColors.warning, size: 52),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Identitas Belum Diverifikasi',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Anda perlu menyelesaikan verifikasi identitas terlebih dahulu sebelum melakukan deposit awal.',
+              style: TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.6),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('Kembali'),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -243,6 +316,52 @@ class _TopupScreenState extends State<TopupScreen> {
             Icon(
               selected ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded,
               color: selected ? AppColors.primary : AppColors.textHint,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAlreadyPaid() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 96,
+              height: 96,
+              decoration: BoxDecoration(
+                color: AppColors.success.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.verified_rounded, color: AppColors.success, size: 52),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Deposit Awal Sudah Lunas',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Anda sudah melakukan deposit awal sebelumnya. Tidak perlu membayar lagi.',
+              style: TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.6),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                style: OutlinedButton.styleFrom(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('Kembali'),
+              ),
             ),
           ],
         ),

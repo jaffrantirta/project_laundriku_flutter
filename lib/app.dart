@@ -8,8 +8,8 @@ import 'providers/transaction_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/main_shell.dart';
 
-class LaundriKuApp extends StatelessWidget {
-  const LaundriKuApp({super.key});
+class BisnisKuApp extends StatelessWidget {
+  const BisnisKuApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +21,7 @@ class LaundriKuApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => TransactionProvider()),
       ],
       child: MaterialApp(
-        title: 'LaundriKu',
+        title: 'BisnisKu',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         home: const _AuthGate(),
@@ -89,7 +89,7 @@ class _SplashScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             const Text(
-              'LaundriKu',
+              'BisnisKu',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 32,

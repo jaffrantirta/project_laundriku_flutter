@@ -281,7 +281,7 @@ class _IdentityScreenState extends State<IdentityScreen> {
           const Text('Verifikasi Identitas', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
           const SizedBox(height: 12),
           const Text(
-            'Lengkapi data identitas Anda untuk dapat melakukan penarikan saldo dan menikmati semua fitur LaundriKu',
+            'Lengkapi data identitas Anda untuk dapat melakukan penarikan saldo dan menikmati semua fitur BisnisKu',
             style: TextStyle(color: AppColors.textSecondary, height: 1.6),
             textAlign: TextAlign.center,
           ),

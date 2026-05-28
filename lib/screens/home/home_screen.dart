@@ -9,10 +9,13 @@ import '../../providers/auth_provider.dart';
 import '../../providers/home_provider.dart';
 import '../../widgets/app_widgets.dart';
 import '../payment/topup_screen.dart';
+import '../payment/transactions_screen.dart';
 import '../withdrawal/withdrawal_screen.dart';
 import '../business/business_screen.dart';
 import '../identity/identity_screen.dart';
 import '../portfolio/portfolio_screen.dart';
+import '../referral/referral_screen.dart';
+import '../notifications/notifications_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -23,6 +26,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   PortfolioSummaryModel? _portfolioSummary;
+  bool? _isVerified; // null = loading, true = verified, false = not verified
 
   @override
   void initState() {
@@ -37,6 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
       auth.loadBalance(),
       home.loadDashboard(),
       _loadPortfolioSummary(),
+      _loadVerificationStatus(),
     ]);
   }
 
@@ -46,6 +51,16 @@ class _HomeScreenState extends State<HomeScreen> {
       final portfolio = PortfolioModel.fromJson(res);
       if (mounted) setState(() => _portfolioSummary = portfolio.summary);
     } catch (_) {}
+  }
+
+  Future<void> _loadVerificationStatus() async {
+    try {
+      final res = await ApiService.getVerificationStatus();
+      final data = (res['data'] ?? res) as Map<String, dynamic>;
+      if (mounted) setState(() => _isVerified = data['is_verified'] == true);
+    } catch (_) {
+      if (mounted) setState(() => _isVerified = false);
+    }
   }
 
   @override
@@ -105,7 +120,7 @@ class _HomeScreenState extends State<HomeScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
-                  'LaundriKu',
+                  'BisnisKu',
                   style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800),
                 ),
                 Text(
@@ -120,7 +135,10 @@ class _HomeScreenState extends State<HomeScreen> {
       actions: [
         IconButton(
           icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-          onPressed: () {},
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+          ),
         ),
       ],
     );
@@ -251,8 +269,13 @@ class _HomeScreenState extends State<HomeScreen> {
             return Expanded(
               child: GestureDetector(
                 onTap: () {
-                  if (a['label'] == 'Bisnis\nTerbuka') {
+                  final label = a['label'] as String;
+                  if (label == 'Bagikan\nReferral' || label == 'Tim\nSaya') {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const ReferralScreen()));
+                  } else if (label == 'Bisnis\nTerbuka') {
                     Navigator.push(context, MaterialPageRoute(builder: (_) => const BusinessScreen()));
+                  } else if (label == 'Pembayaran') {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const TransactionsScreen()));
                   }
                 },
                 child: AppCard(
@@ -292,98 +315,52 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildVerificationBanner() {
-    return FutureBuilder<int?>(
-      future: _getVerificationStatus(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) return const SizedBox.shrink();
-        final status = snapshot.data;
-        if (status == 1) return const SizedBox.shrink();
+    if (_isVerified == null || _isVerified == true) return const SizedBox.shrink();
 
-        Color bgColor;
-        IconData icon;
-        String title, subtitle;
-        VoidCallback onTap;
-
-        if (status == 2) {
-          bgColor = AppColors.info;
-          icon = Icons.payments_rounded;
-          title = 'Lengkapi Deposit Awal';
-          subtitle = 'Selesaikan deposit awal untuk mulai berinvestasi';
-          onTap = () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TopupScreen()));
-        } else if (status == null) {
-          bgColor = AppColors.warning;
-          icon = Icons.badge_outlined;
-          title = 'Verifikasi Identitas';
-          subtitle = 'Lengkapi identitas untuk mengakses semua fitur';
-          onTap = () => Navigator.push(context, MaterialPageRoute(builder: (_) => const IdentityScreen()));
-        } else if (status == 0) {
-          bgColor = AppColors.info;
-          icon = Icons.hourglass_empty_rounded;
-          title = 'Identitas Sedang Diverifikasi';
-          subtitle = 'Mohon tunggu, proses sedang berlangsung';
-          onTap = () => Navigator.push(context, MaterialPageRoute(builder: (_) => const IdentityScreen()));
-        } else {
-          bgColor = AppColors.error;
-          icon = Icons.error_outline_rounded;
-          title = 'Identitas Ditolak';
-          subtitle = 'Klik untuk melihat alasan dan submit ulang';
-          onTap = () => Navigator.push(context, MaterialPageRoute(builder: (_) => const IdentityScreen()));
-        }
-
-        return GestureDetector(
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: bgColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: bgColor.withOpacity(0.3)),
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const IdentityScreen()),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.warning.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.warning.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.badge_outlined, color: AppColors.warning, size: 22),
             ),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: bgColor.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(12),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Verifikasi Identitas',
+                    style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.warning, fontSize: 14),
                   ),
-                  child: Icon(icon, color: bgColor, size: 22),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title, style: TextStyle(fontWeight: FontWeight.w700, color: bgColor, fontSize: 14)),
-                      Text(subtitle, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                    ],
+                  Text(
+                    'Lengkapi identitas untuk mengakses semua fitur',
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
-                ),
-                Icon(Icons.arrow_forward_ios_rounded, size: 14, color: bgColor),
-              ],
+                ],
+              ),
             ),
-          ),
-        );
-      },
+            const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.warning),
+          ],
+        ),
+      ),
     );
-  }
-
-  Future<int?> _getVerificationStatus() async {
-    try {
-      final res = await ApiService.getVerificationStatus();
-      final data = res['data'] ?? res;
-      final isVerified = data['is_verified'] == true;
-      final hasDeposit = data['has_initial_deposit'] == true;
-      if (isVerified && hasDeposit) return 1; // fully onboarded
-      if (isVerified) return 2; // verified but no deposit
-      final vStatus = data['verification_status'];
-      if (vStatus == 'pending') return 0;
-      if (vStatus == 'rejected') return -1;
-      return null; // not submitted
-    } catch (_) {
-      return null;
-    }
   }
 
   Widget _buildBalanceBreakdown() {

@@ -264,7 +264,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const Divider(height: 1, indent: 60),
           _menuItem(
             Icons.info_outline_rounded,
-            'Tentang LaundriKu',
+            'Tentang BisnisKu',
             'Versi 1.0.0',
             () {},
             showArrow: false,
