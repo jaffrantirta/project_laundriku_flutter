@@ -162,6 +162,16 @@ class ApiService {
     required String idNumber,
     required File idPhoto,
     File? selfiePhoto,
+    String? fullName,
+    String? placeOfBirth,
+    String? dateOfBirth,
+    String? phoneNumber,
+    String? occupation,
+    String? maritalStatus,
+    String? province,
+    String? kabupaten,
+    String? kecamatan,
+    String? address,
   }) async {
     final token = await _getToken();
     final request = http.MultipartRequest(
@@ -174,6 +184,16 @@ class ApiService {
     });
     request.fields['id_type'] = idType;
     request.fields['id_number'] = idNumber;
+    if (fullName != null && fullName.isNotEmpty) request.fields['full_name'] = fullName;
+    if (placeOfBirth != null && placeOfBirth.isNotEmpty) request.fields['place_of_birth'] = placeOfBirth;
+    if (dateOfBirth != null && dateOfBirth.isNotEmpty) request.fields['date_of_birth'] = dateOfBirth;
+    if (phoneNumber != null && phoneNumber.isNotEmpty) request.fields['phone_number'] = phoneNumber;
+    if (occupation != null && occupation.isNotEmpty) request.fields['occupation'] = occupation;
+    if (maritalStatus != null && maritalStatus.isNotEmpty) request.fields['marital_status'] = maritalStatus;
+    if (province != null && province.isNotEmpty) request.fields['province'] = province;
+    if (kabupaten != null && kabupaten.isNotEmpty) request.fields['kabupaten'] = kabupaten;
+    if (kecamatan != null && kecamatan.isNotEmpty) request.fields['kecamatan'] = kecamatan;
+    if (address != null && address.isNotEmpty) request.fields['address'] = address;
     request.files.add(await http.MultipartFile.fromPath('id_photo', idPhoto.path));
     if (selfiePhoto != null) {
       request.files.add(await http.MultipartFile.fromPath('selfie_photo', selfiePhoto.path));
