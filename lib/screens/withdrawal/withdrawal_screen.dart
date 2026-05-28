@@ -5,6 +5,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/withdrawal_model.dart';
 import '../../data/services/api_service.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../../widgets/app_widgets.dart';
 
@@ -16,10 +17,11 @@ class WithdrawalScreen extends StatefulWidget {
 }
 
 class _WithdrawalScreenState extends State<WithdrawalScreen> {
-  WithdrawalConfig? _config;
-  bool _configLoading = true;
   bool _showForm = false;
   final _amountCtrl = TextEditingController();
+  final _bankNameCtrl = TextEditingController();
+  final _accountNumberCtrl = TextEditingController();
+  final _accountNameCtrl = TextEditingController();
   bool _isSubmitting = false;
 
   @override
@@ -31,29 +33,40 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
   @override
   void dispose() {
     _amountCtrl.dispose();
+    _bankNameCtrl.dispose();
+    _accountNumberCtrl.dispose();
+    _accountNameCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _loadAll() async {
-    context.read<TransactionProvider>().loadWithdrawals(refresh: true);
-    try {
-      final res = await ApiService.getWithdrawalConfig();
-      setState(() {
-        _config = WithdrawalConfig.fromJson(res['data']);
-        _configLoading = false;
-      });
-    } catch (_) {
-      setState(() => _configLoading = false);
-    }
+    final auth = context.read<AuthProvider>();
+    final tx = context.read<TransactionProvider>();
+    await Future.wait([
+      auth.loadBalance(),
+      tx.loadWithdrawals(refresh: true),
+    ]);
   }
 
   Future<void> _submit() async {
     final raw = _amountCtrl.text.replaceAll(RegExp(r'[^\d]'), '');
     final amount = int.tryParse(raw);
-    if (amount == null || amount < (_config?.minAmount ?? 50000)) {
+    if (amount == null || amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Minimum penarikan ${CurrencyFormatter.format(_config?.minAmount ?? 50000)}'),
+        const SnackBar(
+          content: Text('Masukkan jumlah penarikan yang valid'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    if (_bankNameCtrl.text.trim().isEmpty ||
+        _accountNumberCtrl.text.trim().isEmpty ||
+        _accountNameCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Lengkapi semua data rekening bank'),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ),
@@ -62,26 +75,37 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
     }
     setState(() => _isSubmitting = true);
     try {
-      await ApiService.createWithdrawal(amount);
+      await ApiService.requestWithdrawal(
+        amount: amount,
+        bankName: _bankNameCtrl.text.trim(),
+        accountNumber: _accountNumberCtrl.text.trim(),
+        accountName: _accountNameCtrl.text.trim(),
+      );
       if (mounted) {
         setState(() {
           _showForm = false;
           _amountCtrl.clear();
+          _bankNameCtrl.clear();
+          _accountNumberCtrl.clear();
+          _accountNameCtrl.clear();
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Penarikan berhasil dibuat!'),
+            content: Text('Permintaan penarikan berhasil dibuat!'),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
           ),
         );
-        context.read<TransactionProvider>().loadWithdrawals(refresh: true);
         _loadAll();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: AppColors.error, behavior: SnackBarBehavior.floating),
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     }
@@ -93,38 +117,42 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Penarikan Saldo')),
-      body: _configLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadAll,
-              color: AppColors.primary,
-              child: CustomScrollView(
-                slivers: [
-                  SliverPadding(
-                    padding: const EdgeInsets.all(16),
-                    sliver: SliverList(
-                      delegate: SliverChildListDelegate([
-                        _buildBalanceCard(),
+      body: Consumer<AuthProvider>(
+        builder: (_, auth, __) {
+          final isVerified = auth.balance?.isVerified == true;
+          return RefreshIndicator(
+            onRefresh: _loadAll,
+            color: AppColors.primary,
+            child: CustomScrollView(
+              slivers: [
+                SliverPadding(
+                  padding: const EdgeInsets.all(16),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      _buildBalanceCard(auth),
+                      const SizedBox(height: 16),
+                      if (isVerified) ...[
+                        if (_showForm) _buildForm() else _buildWithdrawButton(),
                         const SizedBox(height: 16),
-                        if (_config?.isIdentityVerified == true) ...[
-                          if (_showForm) _buildForm() else _buildWithdrawButton(),
-                          const SizedBox(height: 16),
-                        ] else
-                          _buildIdentityWarning(),
-                        const SizedBox(height: 8),
-                        const SectionHeader(title: 'Riwayat Penarikan'),
-                        const SizedBox(height: 12),
-                      ]),
-                    ),
+                      ] else
+                        _buildIdentityWarning(),
+                      const SizedBox(height: 8),
+                      const SectionHeader(title: 'Riwayat Penarikan'),
+                      const SizedBox(height: 12),
+                    ]),
                   ),
-                  _buildHistory(),
-                ],
-              ),
+                ),
+                _buildHistory(),
+              ],
             ),
+          );
+        },
+      ),
     );
   }
 
-  Widget _buildBalanceCard() {
+  Widget _buildBalanceCard(AuthProvider auth) {
+    final balance = auth.balance?.balance ?? 0;
     return GradientCard(
       colors: const [AppColors.primary, AppColors.primaryLight],
       child: Column(
@@ -133,7 +161,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
           const Text('Saldo Tersedia', style: TextStyle(color: Colors.white70, fontSize: 13)),
           const SizedBox(height: 8),
           Text(
-            CurrencyFormatter.format(_config?.walletBalance ?? 0),
+            CurrencyFormatter.format(balance),
             style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 12),
@@ -141,9 +169,9 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
           const SizedBox(height: 12),
           Row(
             children: [
-              _infoChip('Maks. Tarik', CurrencyFormatter.compact(_config?.maxWithdrawal ?? 0)),
+              _infoChip('Profit Investasi', CurrencyFormatter.compact(auth.balance?.investmentProfit ?? 0)),
               const SizedBox(width: 12),
-              _infoChip('Saldo Min.', CurrencyFormatter.compact(_config?.maintainingBalance ?? 0)),
+              _infoChip('Reward Referral', CurrencyFormatter.compact(auth.balance?.referralReward ?? 0)),
             ],
           ),
         ],
@@ -193,9 +221,9 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
         children: [
           const Text('Jumlah Penarikan', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
           const SizedBox(height: 4),
-          Text(
-            'Min: ${CurrencyFormatter.format(_config?.minAmount ?? 50000)} | Biaya admin: ${CurrencyFormatter.format(_config?.adminFee ?? 0)}',
-            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          const Text(
+            'Masukkan jumlah yang ingin ditarik',
+            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 14),
           TextField(
@@ -210,6 +238,15 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
             ),
           ),
           const SizedBox(height: 16),
+          const Text('Data Rekening Bank', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+          const SizedBox(height: 12),
+          _bankField(_bankNameCtrl, 'Nama Bank (contoh: BCA, Mandiri)', Icons.account_balance_rounded),
+          const SizedBox(height: 10),
+          _bankField(_accountNumberCtrl, 'Nomor Rekening', Icons.credit_card_rounded,
+              type: TextInputType.number),
+          const SizedBox(height: 10),
+          _bankField(_accountNameCtrl, 'Nama Pemilik Rekening', Icons.person_outline_rounded),
+          const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
@@ -217,6 +254,9 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                   onPressed: () => setState(() {
                     _showForm = false;
                     _amountCtrl.clear();
+                    _bankNameCtrl.clear();
+                    _accountNumberCtrl.clear();
+                    _accountNameCtrl.clear();
                   }),
                   child: const Text('Batal'),
                 ),
@@ -233,6 +273,22 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _bankField(
+    TextEditingController ctrl,
+    String label,
+    IconData icon, {
+    TextInputType? type,
+  }) {
+    return TextField(
+      controller: ctrl,
+      keyboardType: type,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: AppColors.primary),
       ),
     );
   }
@@ -329,7 +385,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Biaya admin: ${CurrencyFormatter.format(w.adminFee)}',
+                  '${w.bankName} • ${w.accountNumber}',
                   style: const TextStyle(fontSize: 11, color: AppColors.textHint),
                 ),
               ],
@@ -343,7 +399,7 @@ class _WithdrawalScreenState extends State<WithdrawalScreen> {
                 style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.error),
               ),
               const SizedBox(height: 4),
-              StatusBadge(label: w.status.label, statusValue: w.status.value, isPayment: false),
+              StatusBadge(label: w.statusLabel, statusValue: w.statusValue, isPayment: false),
             ],
           ),
         ],

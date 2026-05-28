@@ -5,14 +5,14 @@ import '../../data/services/api_service.dart';
 import '../../widgets/app_widgets.dart';
 import '../group/group_detail_screen.dart';
 
-class LeaderboardScreen extends StatefulWidget {
-  const LeaderboardScreen({super.key});
+class BusinessScreen extends StatefulWidget {
+  const BusinessScreen({super.key});
 
   @override
-  State<LeaderboardScreen> createState() => _LeaderboardScreenState();
+  State<BusinessScreen> createState() => _BusinessScreenState();
 }
 
-class _LeaderboardScreenState extends State<LeaderboardScreen> {
+class _BusinessScreenState extends State<BusinessScreen> {
   List<BusinessModel> _businesses = [];
   bool _loading = true;
   int _page = 1;
@@ -86,9 +86,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Bisnis Terbuka'),
-      ),
+      appBar: AppBar(title: const Text('Bisnis')),
       body: _loading
           ? ListView.builder(
               padding: const EdgeInsets.all(16),

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
-import 'verify_email_screen.dart';
+import '../main_shell.dart';
 
 class RegisterScreen extends StatefulWidget {
   final String? prefillReferral;
@@ -16,6 +16,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   final _passConfirmCtrl = TextEditingController();
   final _referralCtrl = TextEditingController();
@@ -34,6 +35,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void dispose() {
     _nameCtrl.dispose();
     _emailCtrl.dispose();
+    _phoneCtrl.dispose();
     _passCtrl.dispose();
     _passConfirmCtrl.dispose();
     _referralCtrl.dispose();
@@ -48,15 +50,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
       email: _emailCtrl.text.trim(),
       password: _passCtrl.text,
       passwordConfirmation: _passConfirmCtrl.text,
+      phone: _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
       referralCode: _referralCtrl.text.trim().isEmpty ? null : _referralCtrl.text.trim(),
     );
     if (!mounted) return;
     if (result['success'] == true) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => VerifyEmailScreen(email: _emailCtrl.text.trim()),
-        ),
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const MainShell()),
+        (route) => false,
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -117,6 +118,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         if (!v.contains('@')) return 'Format email tidak valid';
                         return null;
                       },
+                    ),
+                    const SizedBox(height: 14),
+                    _buildField(
+                      controller: _phoneCtrl,
+                      label: 'No. WhatsApp/Telepon (Opsional)',
+                      icon: Icons.phone_outlined,
+                      type: TextInputType.phone,
+                      action: TextInputAction.next,
                     ),
                     const SizedBox(height: 14),
                     TextFormField(

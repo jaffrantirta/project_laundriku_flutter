@@ -1,84 +1,79 @@
-class LeaderboardModel {
-  final int id;
-  final int rank;
-  final LeaderboardUser user;
-  final int amount;
-  final String month;
-  final String monthLabel;
+class VerificationStatusModel {
+  final bool isVerified;
+  final String? verificationStatus;
+  final bool hasInitialDeposit;
+  final bool idUploaded;
+  final bool idApproved;
+  final bool depositPaid;
 
-  const LeaderboardModel({
-    required this.id,
-    required this.rank,
-    required this.user,
-    required this.amount,
-    required this.month,
-    required this.monthLabel,
+  const VerificationStatusModel({
+    required this.isVerified,
+    this.verificationStatus,
+    required this.hasInitialDeposit,
+    required this.idUploaded,
+    required this.idApproved,
+    required this.depositPaid,
   });
 
-  factory LeaderboardModel.fromJson(Map<String, dynamic> json) => LeaderboardModel(
-        id: json['id'],
-        rank: json['rank'],
-        user: LeaderboardUser.fromJson(json['user']),
-        amount: json['amount'] ?? 0,
-        month: json['month'] ?? '',
-        monthLabel: json['month_label'] ?? '',
-      );
+  bool get hasSubmitted => idUploaded;
+  bool get isPending => !isVerified && verificationStatus == 'pending';
+  bool get isRejected => verificationStatus == 'rejected';
+  bool get isFullyOnboarded => isVerified && hasInitialDeposit;
+
+  factory VerificationStatusModel.fromJson(Map<String, dynamic> json) {
+    final data = (json['data'] ?? json) as Map<String, dynamic>;
+    final steps = (data['steps'] as Map<String, dynamic>?) ?? {};
+    return VerificationStatusModel(
+      isVerified: data['is_verified'] == true,
+      verificationStatus: data['verification_status'],
+      hasInitialDeposit: data['has_initial_deposit'] == true,
+      idUploaded: steps['id_uploaded'] == true,
+      idApproved: steps['id_approved'] == true,
+      depositPaid: steps['deposit_paid'] == true,
+    );
+  }
 }
 
-class LeaderboardUser {
+class BusinessDetailModel {
   final int id;
   final String name;
-  final String referralCode;
-  final bool isCurrentUser;
+  final String category;
+  final String status;
+  final int currentInvestors;
+  final int targetInvestors;
+  final Map<String, dynamic>? extra;
 
-  const LeaderboardUser({
+  const BusinessDetailModel({
     required this.id,
     required this.name,
-    required this.referralCode,
-    required this.isCurrentUser,
+    required this.category,
+    required this.status,
+    required this.currentInvestors,
+    required this.targetInvestors,
+    this.extra,
   });
 
-  factory LeaderboardUser.fromJson(Map<String, dynamic> json) => LeaderboardUser(
-        id: json['id'],
-        name: json['name'],
-        referralCode: json['referral_code'] ?? '',
-        isCurrentUser: json['is_current_user'] == true || json['is_current_user'] == 1,
-      );
-}
+  bool get isOpen => status == 'open';
+  double get investorProgress =>
+      targetInvestors > 0 ? currentInvestors / targetInvestors : 0;
 
-class CurrentUserRank {
-  final int rank;
-  final int amount;
+  factory BusinessDetailModel.fromJson(Map<String, dynamic> json) {
+    final data = (json['data'] ?? json) as Map<String, dynamic>;
+    return BusinessDetailModel(
+      id: _parseInt(data['id']),
+      name: data['name'] ?? '',
+      category: data['category'] ?? '',
+      status: data['status'] ?? '',
+      currentInvestors: _parseInt(data['current_investors']),
+      targetInvestors: _parseInt(data['target_investors']),
+      extra: data,
+    );
+  }
 
-  const CurrentUserRank({required this.rank, required this.amount});
-
-  factory CurrentUserRank.fromJson(Map<String, dynamic> json) =>
-      CurrentUserRank(rank: json['rank'], amount: json['amount'] ?? 0);
-}
-
-class IdentityModel {
-  final bool hasIdentity;
-  final int? status;
-  final String? statusLabel;
-  final String? statusDescription;
-  final String? note;
-  final Map<String, dynamic>? identity;
-
-  const IdentityModel({
-    required this.hasIdentity,
-    this.status,
-    this.statusLabel,
-    this.statusDescription,
-    this.note,
-    this.identity,
-  });
-
-  factory IdentityModel.fromJson(Map<String, dynamic> json) => IdentityModel(
-        hasIdentity: json['has_identity'] == true || json['has_identity'] == 1,
-        status: json['status'],
-        statusLabel: json['status_label'],
-        statusDescription: json['status_description'],
-        note: json['note'],
-        identity: json['identity'],
-      );
+  static int _parseInt(dynamic v) {
+    if (v == null) return 0;
+    if (v is int) return v;
+    if (v is double) return v.toInt();
+    return (double.tryParse(v.toString()) ?? 0).toInt();
+  }
 }

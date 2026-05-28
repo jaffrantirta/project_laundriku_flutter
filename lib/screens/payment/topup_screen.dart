@@ -1,6 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/payment_model.dart';
@@ -15,80 +18,127 @@ class TopupScreen extends StatefulWidget {
 }
 
 class _TopupScreenState extends State<TopupScreen> {
-  TopupConfig? _config;
-  bool _configLoading = true;
-  final _amountCtrl = TextEditingController();
+  String _paymentMethod = 'manual_transfer';
   bool _isSubmitting = false;
-  PaymentModel? _createdPayment;
-
-  final _quickAmounts = [50000, 100000, 200000, 500000, 1000000];
+  bool _isLoadingConfig = true;
+  InitialDepositModel? _createdDeposit;
+  bool _isUploadingProof = false;
+  File? _proofFile;
+  int _depositAmount = AppConstants.initialDepositAmount;
 
   @override
   void initState() {
     super.initState();
-    _loadConfig();
+    _loadExistingDeposit();
   }
 
-  @override
-  void dispose() {
-    _amountCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadConfig() async {
+  Future<void> _loadExistingDeposit() async {
     try {
-      final res = await ApiService.getTopupConfig();
-      setState(() {
-        _config = TopupConfig.fromJson(res['data']);
-        _configLoading = false;
-      });
+      final res = await ApiService.getPaymentHistory(type: 'initial_deposit', perPage: 1);
+      final data = res['data'] as Map<String, dynamic>?;
+      final items = data?['data'] as List<dynamic>?;
+      if (items != null && items.isNotEmpty) {
+        final tx = TransactionModel.fromJson(items.first as Map<String, dynamic>);
+        if (tx.status == 'pending') {
+          // Existing pending deposit — reconstruct so we can show payment details
+          // Re-fetch full detail via payment status
+          final detail = await ApiService.getPaymentStatus(tx.id);
+          final detailData = (detail['data'] ?? detail) as Map<String, dynamic>;
+          final detailTx = TransactionModel.fromJson(detailData['transaction'] ?? detailData);
+          if (mounted) {
+            setState(() {
+              _depositAmount = detailTx.amount > 0 ? detailTx.amount : tx.amount;
+              _createdDeposit = InitialDepositModel(
+                transaction: detailTx,
+                bankDetails: detailData['bank_details'] != null
+                    ? BankDetailsModel.fromJson(detailData['bank_details'] as Map<String, dynamic>)
+                    : null,
+              );
+              _isLoadingConfig = false;
+            });
+          }
+          return;
+        }
+        // Transaction exists but not pending — just take the amount for the form
+        if (tx.amount > 0 && mounted) {
+          setState(() => _depositAmount = tx.amount);
+        }
+      }
     } catch (_) {
-      setState(() => _configLoading = false);
+      // Ignore — show form with constant amount
     }
+    if (mounted) setState(() => _isLoadingConfig = false);
   }
 
   Future<void> _submit() async {
-    final raw = _amountCtrl.text.replaceAll(RegExp(r'[^\d]'), '');
-    final amount = int.tryParse(raw);
-    if (amount == null || amount < (_config?.minAmount ?? 25000)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Minimum topup ${CurrencyFormatter.format(_config?.minAmount ?? 25000)}'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
     setState(() => _isSubmitting = true);
     try {
-      final res = await ApiService.createTopup(amount);
-      setState(() => _createdPayment = PaymentModel.fromJson(res['data']));
+      final res = await ApiService.payInitialDeposit(_paymentMethod);
+      final model = InitialDepositModel.fromJson(res);
+      setState(() {
+        _createdDeposit = model;
+        if (model.transaction.amount > 0) _depositAmount = model.transaction.amount;
+      });
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: AppColors.error, behavior: SnackBarBehavior.floating),
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     }
     setState(() => _isSubmitting = false);
   }
 
-  void _contactWhatsApp() async {
-    final wa = _config?.picWhatsapp;
-    if (wa == null) return;
-    final uri = Uri.parse('https://wa.me/$wa?text=Konfirmasi topup LaundriKu order ${_createdPayment?.orderId}');
-    if (await canLaunchUrl(uri)) launchUrl(uri, mode: LaunchMode.externalApplication);
+  Future<void> _pickProof() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    if (picked != null) setState(() => _proofFile = File(picked.path));
+  }
+
+  Future<void> _uploadProof() async {
+    if (_proofFile == null || _createdDeposit == null) return;
+    setState(() => _isUploadingProof = true);
+    try {
+      await ApiService.uploadPaymentProof(
+        transactionId: _createdDeposit!.transaction.id,
+        proofImage: _proofFile!,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Bukti pembayaran berhasil dikirim! Menunggu konfirmasi admin.'),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+    setState(() => _isUploadingProof = false);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Topup Saldo')),
-      body: _configLoading
+      appBar: AppBar(title: const Text('Deposit Awal')),
+      body: _isLoadingConfig
           ? const Center(child: CircularProgressIndicator())
-          : _createdPayment != null
+          : _createdDeposit != null
               ? _buildSuccess()
               : _buildForm(),
     );
@@ -100,100 +150,111 @@ class _TopupScreenState extends State<TopupScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildInfoCard(),
-          const SizedBox(height: 20),
-          const Text('Jumlah Topup', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _amountCtrl,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
-            decoration: InputDecoration(
-              hintText: '0',
-              prefixText: 'Rp ',
-              prefixStyle: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textSecondary,
-              ),
-              filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.divider),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.primary, width: 2),
-              ),
+          GradientCard(
+            colors: const [AppColors.primary, AppColors.primaryLight],
+            child: Row(
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(Icons.account_balance_wallet_rounded, color: Colors.white, size: 26),
+                ),
+                const SizedBox(width: 14),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Deposit Awal', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    Text(
+                      CurrencyFormatter.format(_depositAmount),
+                      style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800),
+                    ),
+                    const Text('Satu kali pembayaran untuk aktivasi', style: TextStyle(color: Colors.white60, fontSize: 11)),
+                  ],
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _quickAmounts.map((a) => GestureDetector(
-              onTap: () => _amountCtrl.text = a.toString(),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.primary.withOpacity(0.2)),
-                ),
-                child: Text(
-                  CurrencyFormatter.compact(a),
-                  style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 13),
-                ),
-              ),
-            )).toList(),
-          ),
           const SizedBox(height: 24),
+          const Text('Metode Pembayaran', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+          const SizedBox(height: 12),
+          _buildMethodTile(
+            'manual_transfer',
+            'Transfer Bank Manual',
+            'Konfirmasi via upload bukti transfer',
+            Icons.account_balance_rounded,
+          ),
+          const SizedBox(height: 10),
+          _buildMethodTile(
+            'qris',
+            'QRIS',
+            'Scan QR code, konfirmasi otomatis',
+            Icons.qr_code_rounded,
+          ),
+          const SizedBox(height: 28),
           LoadingButton(
             isLoading: _isSubmitting,
             onPressed: _submit,
-            label: 'Buat Topup',
+            label: 'Lanjutkan Pembayaran',
           ),
         ],
       ),
     );
   }
 
-  Widget _buildInfoCard() {
-    if (_config == null) return const SizedBox.shrink();
-    return AppCard(
-      color: AppColors.primary.withOpacity(0.05),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.info_outline_rounded, color: AppColors.primary, size: 18),
-              SizedBox(width: 8),
-              Text('Informasi Topup', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary)),
-            ],
+  Widget _buildMethodTile(String value, String label, String subtitle, IconData icon) {
+    final selected = _paymentMethod == value;
+    return GestureDetector(
+      onTap: () => setState(() => _paymentMethod = value),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary.withValues(alpha: 0.06) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected ? AppColors.primary : AppColors.divider,
+            width: selected ? 2 : 1,
           ),
-          const Divider(height: 16),
-          InfoRow(label: 'Minimum Topup', value: CurrencyFormatter.format(_config!.minAmount)),
-          InfoRow(label: 'Biaya Admin', value: _config!.adminFee == 0 ? 'Gratis' : CurrencyFormatter.format(_config!.adminFee)),
-          if (_config!.isManual && _config!.paymentInfo != null) ...[
-            InfoRow(label: 'Bank', value: _config!.paymentInfo!['bank'] ?? '-'),
-            InfoRow(label: 'No. Rekening', value: _config!.paymentInfo!['account_number'] ?? '-'),
-            InfoRow(label: 'Nama', value: _config!.paymentInfo!['account_name'] ?? '-'),
-          ] else ...[
-            const InfoRow(label: 'Pembayaran', value: 'GoPay / QRIS'),
-            const InfoRow(label: 'Konfirmasi', value: 'Otomatis'),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: (selected ? AppColors.primary : AppColors.textHint).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: selected ? AppColors.primary : AppColors.textHint, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: TextStyle(fontWeight: FontWeight.w700, color: selected ? AppColors.primary : AppColors.textPrimary)),
+                  Text(subtitle, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                ],
+              ),
+            ),
+            Icon(
+              selected ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded,
+              color: selected ? AppColors.primary : AppColors.textHint,
+            ),
           ],
-        ],
+        ),
       ),
     );
   }
 
   Widget _buildSuccess() {
-    final p = _createdPayment!;
-    final info = p.paymentInfo;
-    final isMidtrans = info != null && info.containsKey('qr_url');
+    final deposit = _createdDeposit!;
+    final isQris = deposit.isQris;
+    final bank = deposit.bankDetails;
+    final amount = deposit.transaction.amount > 0 ? deposit.transaction.amount : _depositAmount;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -210,12 +271,12 @@ class _TopupScreenState extends State<TopupScreen> {
             child: const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 44),
           ),
           const SizedBox(height: 16),
-          const Text('Topup Berhasil Dibuat!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+          const Text('Pembayaran Dibuat!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
           const SizedBox(height: 8),
           Text(
-            isMidtrans
+            isQris
                 ? 'Scan QR code atau buka aplikasi GoPay untuk membayar'
-                : 'Transfer ke rekening berikut dan konfirmasi via WhatsApp',
+                : 'Transfer ke rekening berikut dan upload bukti pembayaran',
             style: const TextStyle(color: AppColors.textSecondary),
             textAlign: TextAlign.center,
           ),
@@ -223,27 +284,32 @@ class _TopupScreenState extends State<TopupScreen> {
           AppCard(
             child: Column(
               children: [
-                InfoRow(label: 'Order ID', value: p.orderId),
-                InfoRow(label: 'Jumlah', value: CurrencyFormatter.format(p.grossAmount), bold: true),
-                if (!isMidtrans && info != null) ...[
-                  InfoRow(label: 'Bank', value: info['bank'] ?? '-'),
+                InfoRow(label: 'ID Transaksi', value: '#${deposit.transaction.id}'),
+                InfoRow(
+                  label: 'Jumlah',
+                  value: CurrencyFormatter.format(amount),
+                  bold: true,
+                  valueColor: AppColors.primary,
+                ),
+                if (bank != null) ...[
+                  InfoRow(label: 'Bank', value: bank.bankName),
                   InfoRow(
                     label: 'No. Rekening',
-                    value: info['account_number'] ?? '-',
+                    value: bank.accountNumber,
                     valueColor: AppColors.primary,
                     bold: true,
                   ),
-                  InfoRow(label: 'Nama', value: info['account_name'] ?? '-'),
+                  InfoRow(label: 'Nama', value: bank.accountName),
                 ],
               ],
             ),
           ),
-          if (isMidtrans) ...[
+          if (isQris) ...[
             const SizedBox(height: 20),
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: Image.network(
-                info['qr_url'],
+                deposit.transaction.qrCodeUrl!,
                 width: 220,
                 height: 220,
                 fit: BoxFit.contain,
@@ -264,13 +330,13 @@ class _TopupScreenState extends State<TopupScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
-            if (info['deeplink_url'] != null)
+            if (deposit.transaction.deepLinkUrl != null)
               SizedBox(
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton.icon(
                   onPressed: () async {
-                    final uri = Uri.parse(info['deeplink_url']);
+                    final uri = Uri.parse(deposit.transaction.deepLinkUrl!);
                     if (await canLaunchUrl(uri)) launchUrl(uri, mode: LaunchMode.externalApplication);
                   },
                   icon: const Icon(Icons.open_in_new_rounded),
@@ -282,10 +348,10 @@ class _TopupScreenState extends State<TopupScreen> {
               ),
           ] else ...[
             const SizedBox(height: 16),
-            if (info != null)
+            if (bank != null)
               GestureDetector(
                 onTap: () {
-                  Clipboard.setData(ClipboardData(text: info['account_number'] ?? ''));
+                  Clipboard.setData(ClipboardData(text: bank.accountNumber));
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('No. rekening disalin'), behavior: SnackBarBehavior.floating),
                   );
@@ -306,21 +372,57 @@ class _TopupScreenState extends State<TopupScreen> {
                   ),
                 ),
               ),
-            const SizedBox(height: 12),
-            if (_config?.picWhatsapp != null)
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton.icon(
-                  onPressed: _contactWhatsApp,
-                  icon: const Icon(Icons.chat_rounded),
-                  label: const Text('Konfirmasi via WhatsApp'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF25D366),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            const SizedBox(height: 16),
+            const Text('Upload Bukti Transfer', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+            const SizedBox(height: 10),
+            GestureDetector(
+              onTap: _pickProof,
+              child: Container(
+                height: 120,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _proofFile != null ? AppColors.primary : AppColors.divider,
+                    width: _proofFile != null ? 2 : 1,
                   ),
                 ),
+                child: _proofFile != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(11),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            Image.file(_proofFile!, fit: BoxFit.cover),
+                            Positioned(
+                              right: 8,
+                              top: 8,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(color: AppColors.success, shape: BoxShape.circle),
+                                child: const Icon(Icons.check, color: Colors.white, size: 14),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add_photo_alternate_outlined, size: 32, color: AppColors.textSecondary),
+                          SizedBox(height: 8),
+                          Text('Pilih foto bukti transfer', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                          Text('Ketuk untuk memilih', style: TextStyle(fontSize: 11, color: AppColors.textHint)),
+                        ],
+                      ),
               ),
+            ),
+            const SizedBox(height: 16),
+            LoadingButton(
+              isLoading: _isUploadingProof,
+              onPressed: _proofFile != null ? _uploadProof : null,
+              label: 'Kirim Bukti Pembayaran',
+            ),
           ],
           const SizedBox(height: 12),
           SizedBox(

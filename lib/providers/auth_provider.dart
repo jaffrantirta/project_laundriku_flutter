@@ -10,13 +10,15 @@ enum AuthStatus { unknown, authenticated, unauthenticated }
 class AuthProvider extends ChangeNotifier {
   AuthStatus _status = AuthStatus.unknown;
   UserModel? _user;
-  WalletModel? _wallet;
+  BalanceModel? _balance;
+  String? _referralCode;
   bool _isLoading = false;
   String? _error;
 
   AuthStatus get status => _status;
   UserModel? get user => _user;
-  WalletModel? get wallet => _wallet;
+  BalanceModel? get balance => _balance;
+  String? get referralCode => _referralCode;
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get isAuthenticated => _status == AuthStatus.authenticated;
@@ -34,8 +36,9 @@ class AuthProvider extends ChangeNotifier {
       _user = UserModel.fromJson(jsonDecode(userData));
     }
     try {
-      final res = await ApiService.getUser();
-      _user = UserModel.fromJson(res['data']);
+      final res = await ApiService.getProfile();
+      final data = res['data'] ?? res;
+      _user = UserModel.fromJson(data is Map ? data['user'] ?? data : data);
       await prefs.setString(AppConstants.userKey, jsonEncode(_user!.toJson()));
       _status = AuthStatus.authenticated;
     } catch (_) {
@@ -74,6 +77,7 @@ class AuthProvider extends ChangeNotifier {
     required String email,
     required String password,
     required String passwordConfirmation,
+    String? phone,
     String? referralCode,
   }) async {
     _isLoading = true;
@@ -85,11 +89,20 @@ class AuthProvider extends ChangeNotifier {
         email: email,
         password: password,
         passwordConfirmation: passwordConfirmation,
+        phone: phone,
         referralCode: referralCode,
       );
+      final data = res['data'];
+      _user = UserModel.fromJson(data['user']);
+      final token = data['token'] as String;
+      _referralCode = data['referral_code'];
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(AppConstants.tokenKey, token);
+      await prefs.setString(AppConstants.userKey, jsonEncode(_user!.toJson()));
+      _status = AuthStatus.authenticated;
       _isLoading = false;
       notifyListeners();
-      return {'success': true, 'data': res['data']};
+      return {'success': true, 'data': data};
     } catch (e) {
       _error = e.toString();
       _isLoading = false;
@@ -106,22 +119,33 @@ class AuthProvider extends ChangeNotifier {
     await _clearSession(prefs);
     _status = AuthStatus.unauthenticated;
     _user = null;
-    _wallet = null;
+    _balance = null;
+    _referralCode = null;
     notifyListeners();
   }
 
-  Future<void> loadWallet() async {
+  Future<void> loadBalance() async {
     try {
-      final res = await ApiService.getWallet();
-      _wallet = WalletModel.fromJson(res['data']);
+      final res = await ApiService.getBalance();
+      _balance = BalanceModel.fromJson(res);
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<void> loadReferralCode() async {
+    try {
+      final res = await ApiService.getReferralCode();
+      final data = res['data'] ?? res;
+      _referralCode = data['referral_code'];
       notifyListeners();
     } catch (_) {}
   }
 
   Future<void> refreshUser() async {
     try {
-      final res = await ApiService.getUser();
-      _user = UserModel.fromJson(res['data']);
+      final res = await ApiService.getProfile();
+      final data = res['data'] ?? res;
+      _user = UserModel.fromJson(data is Map ? data['user'] ?? data : data);
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(AppConstants.userKey, jsonEncode(_user!.toJson()));
       notifyListeners();

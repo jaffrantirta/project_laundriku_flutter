@@ -19,8 +19,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AuthProvider>().refreshUser();
-      context.read<AuthProvider>().loadWallet();
+      context.read<AuthProvider>().loadBalance();
+      context.read<AuthProvider>().loadReferralCode();
     });
   }
 
@@ -111,7 +111,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   delegate: SliverChildListDelegate([
                     _buildWalletCard(auth),
                     const SizedBox(height: 16),
-                    _buildReferralCard(user?.referralCode ?? ''),
+                    _buildReferralCard(auth.referralCode ?? ''),
                     const SizedBox(height: 16),
                     _buildMenuSection(user),
                     const SizedBox(height: 16),
@@ -147,7 +147,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 const Text('Saldo Dompet', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                 Text(
-                  auth.wallet?.balanceFormatted ?? 'Rp 0',
+                  CurrencyFormatter.format(auth.balance?.balance ?? 0),
                   style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.primary),
                 ),
               ],
@@ -156,24 +156,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: (auth.user?.isActiveReferral == true ? AppColors.success : AppColors.warning).withOpacity(0.1),
+              color: (auth.balance?.isVerified == true ? AppColors.success : AppColors.warning).withOpacity(0.1),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  auth.user?.isActiveReferral == true ? Icons.verified_rounded : Icons.pending_rounded,
+                  auth.balance?.isVerified == true ? Icons.verified_rounded : Icons.pending_rounded,
                   size: 14,
-                  color: auth.user?.isActiveReferral == true ? AppColors.success : AppColors.warning,
+                  color: auth.balance?.isVerified == true ? AppColors.success : AppColors.warning,
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  auth.user?.isActiveReferral == true ? 'Aktif' : 'Non-aktif',
+                  auth.balance?.isVerified == true ? 'Aktif' : 'Non-aktif',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: auth.user?.isActiveReferral == true ? AppColors.success : AppColors.warning,
+                    color: auth.balance?.isVerified == true ? AppColors.success : AppColors.warning,
                   ),
                 ),
               ],

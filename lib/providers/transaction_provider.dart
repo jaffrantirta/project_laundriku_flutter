@@ -1,45 +1,38 @@
 import 'package:flutter/foundation.dart';
 import '../data/models/bonus_model.dart';
 import '../data/models/payment_model.dart';
+import '../data/models/referral_model.dart';
 import '../data/models/withdrawal_model.dart';
 import '../data/services/api_service.dart';
 
 class TransactionProvider extends ChangeNotifier {
   // Payments
-  List<PaymentModel> _payments = [];
+  List<TransactionModel> _payments = [];
   PaginationModel? _paymentPagination;
   bool _paymentsLoading = false;
-  int? _paymentStatusFilter;
-  int? _paymentTypeFilter;
 
   // Withdrawals
   List<WithdrawalModel> _withdrawals = [];
   PaginationModel? _withdrawalPagination;
   bool _withdrawalsLoading = false;
-  int? _withdrawalStatusFilter;
 
-  // Bonuses
-  List<BonusModel> _bonuses = [];
-  PaginationModel? _bonusPagination;
-  bool _bonusesLoading = false;
-  int _bonusTotal = 0;
+  // Referral rewards
+  List<ReferralRewardModel> _rewards = [];
+  PaginationModel? _rewardPagination;
+  bool _rewardsLoading = false;
 
   // Getters
-  List<PaymentModel> get payments => _payments;
+  List<TransactionModel> get payments => _payments;
   PaginationModel? get paymentPagination => _paymentPagination;
   bool get paymentsLoading => _paymentsLoading;
-  int? get paymentStatusFilter => _paymentStatusFilter;
-  int? get paymentTypeFilter => _paymentTypeFilter;
 
   List<WithdrawalModel> get withdrawals => _withdrawals;
   PaginationModel? get withdrawalPagination => _withdrawalPagination;
   bool get withdrawalsLoading => _withdrawalsLoading;
-  int? get withdrawalStatusFilter => _withdrawalStatusFilter;
 
-  List<BonusModel> get bonuses => _bonuses;
-  PaginationModel? get bonusPagination => _bonusPagination;
-  bool get bonusesLoading => _bonusesLoading;
-  int get bonusTotal => _bonusTotal;
+  List<ReferralRewardModel> get rewards => _rewards;
+  PaginationModel? get rewardPagination => _rewardPagination;
+  bool get rewardsLoading => _rewardsLoading;
 
   Future<void> loadPayments({bool refresh = false}) async {
     if (_paymentsLoading) return;
@@ -48,28 +41,25 @@ class TransactionProvider extends ChangeNotifier {
     notifyListeners();
     try {
       final page = refresh ? 1 : (_paymentPagination?.currentPage ?? 0) + 1;
-      final res = await ApiService.getPayments(
-        page: page,
-        status: _paymentStatusFilter,
-        type: _paymentTypeFilter,
-      );
+      final res = await ApiService.getPaymentHistory(page: page);
       final data = res['data'];
-      final list = (data['payments'] as List).map((e) => PaymentModel.fromJson(e)).toList();
+      final list = (data['data'] as List<dynamic>? ?? [])
+          .map((e) => TransactionModel.fromJson(e as Map<String, dynamic>))
+          .toList();
       if (refresh) {
         _payments = list;
       } else {
         _payments.addAll(list);
       }
-      _paymentPagination = PaginationModel.fromJson(data['pagination']);
+      _paymentPagination = PaginationModel(
+        currentPage: data['current_page'] ?? 1,
+        lastPage: data['last_page'] ?? 1,
+        perPage: data['per_page'] ?? 15,
+        total: data['total'] ?? 0,
+      );
     } catch (_) {}
     _paymentsLoading = false;
     notifyListeners();
-  }
-
-  void setPaymentFilter({int? status, int? type}) {
-    _paymentStatusFilter = status;
-    _paymentTypeFilter = type;
-    loadPayments(refresh: true);
   }
 
   Future<void> loadWithdrawals({bool refresh = false}) async {
@@ -79,47 +69,52 @@ class TransactionProvider extends ChangeNotifier {
     notifyListeners();
     try {
       final page = refresh ? 1 : (_withdrawalPagination?.currentPage ?? 0) + 1;
-      final res = await ApiService.getWithdrawals(
-        page: page,
-        status: _withdrawalStatusFilter,
-      );
+      final res = await ApiService.getWithdrawalHistory(page: page);
       final data = res['data'];
-      final list = (data['withdrawals'] as List).map((e) => WithdrawalModel.fromJson(e)).toList();
+      final list = (data['data'] as List<dynamic>? ?? [])
+          .map((e) => WithdrawalModel.fromJson(e as Map<String, dynamic>))
+          .toList();
       if (refresh) {
         _withdrawals = list;
       } else {
         _withdrawals.addAll(list);
       }
-      _withdrawalPagination = PaginationModel.fromJson(data['pagination']);
+      _withdrawalPagination = PaginationModel(
+        currentPage: data['current_page'] ?? 1,
+        lastPage: data['last_page'] ?? 1,
+        perPage: data['per_page'] ?? 15,
+        total: data['total'] ?? 0,
+      );
     } catch (_) {}
     _withdrawalsLoading = false;
     notifyListeners();
   }
 
-  void setWithdrawalFilter(int? status) {
-    _withdrawalStatusFilter = status;
-    loadWithdrawals(refresh: true);
-  }
-
-  Future<void> loadBonuses({bool refresh = false}) async {
-    if (_bonusesLoading) return;
-    if (refresh) _bonuses = [];
-    _bonusesLoading = true;
+  Future<void> loadRewards({bool refresh = false}) async {
+    if (_rewardsLoading) return;
+    if (refresh) _rewards = [];
+    _rewardsLoading = true;
     notifyListeners();
     try {
-      final page = refresh ? 1 : (_bonusPagination?.currentPage ?? 0) + 1;
-      final res = await ApiService.getBonuses(page: page);
+      final page = refresh ? 1 : (_rewardPagination?.currentPage ?? 0) + 1;
+      final res = await ApiService.getReferralRewards(page: page);
       final data = res['data'];
-      final list = (data['bonuses'] as List).map((e) => BonusModel.fromJson(e)).toList();
+      final list = (data['data'] as List<dynamic>? ?? [])
+          .map((e) => ReferralRewardModel.fromJson(e as Map<String, dynamic>))
+          .toList();
       if (refresh) {
-        _bonuses = list;
+        _rewards = list;
       } else {
-        _bonuses.addAll(list);
+        _rewards.addAll(list);
       }
-      _bonusPagination = PaginationModel.fromJson(data['pagination']);
-      _bonusTotal = data['total_bonus'] ?? 0;
+      _rewardPagination = PaginationModel(
+        currentPage: data['current_page'] ?? 1,
+        lastPage: data['last_page'] ?? 1,
+        perPage: data['per_page'] ?? 15,
+        total: data['total'] ?? 0,
+      );
     } catch (_) {}
-    _bonusesLoading = false;
+    _rewardsLoading = false;
     notifyListeners();
   }
 }

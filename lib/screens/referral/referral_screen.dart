@@ -4,8 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
+import '../../data/models/referral_model.dart';
 import '../../providers/referral_provider.dart';
-import '../../providers/auth_provider.dart';
 import '../../widgets/app_widgets.dart';
 import '../group/group_detail_screen.dart';
 
@@ -37,9 +37,9 @@ class _ReferralScreenState extends State<ReferralScreen> with SingleTickerProvid
   Future<void> _load() async {
     final prov = context.read<ReferralProvider>();
     await Future.wait([
-      prov.loadSummary(),
-      prov.loadReferrals(refresh: true),
-      prov.loadGroups(refresh: true),
+      prov.loadCodeInfo(),
+      prov.loadTree(),
+      prov.loadBusinesses(refresh: true),
     ]);
   }
 
@@ -66,7 +66,7 @@ class _ReferralScreenState extends State<ReferralScreen> with SingleTickerProvid
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Referral & Tim'),
+        title: const Text('Referral & Bisnis'),
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.white,
@@ -74,7 +74,7 @@ class _ReferralScreenState extends State<ReferralScreen> with SingleTickerProvid
           unselectedLabelColor: Colors.white60,
           tabs: const [
             Tab(text: 'Referral'),
-            Tab(text: 'Grup'),
+            Tab(text: 'Bisnis'),
           ],
         ),
       ),
@@ -82,15 +82,15 @@ class _ReferralScreenState extends State<ReferralScreen> with SingleTickerProvid
         controller: _tabController,
         children: [
           _buildReferralTab(),
-          _buildGroupTab(),
+          _buildBusinessTab(),
         ],
       ),
     );
   }
 
   Widget _buildReferralTab() {
-    return Consumer2<ReferralProvider, AuthProvider>(
-      builder: (_, ref, auth, __) => RefreshIndicator(
+    return Consumer<ReferralProvider>(
+      builder: (_, prov, __) => RefreshIndicator(
         onRefresh: _load,
         color: AppColors.primary,
         child: CustomScrollView(
@@ -99,16 +99,16 @@ class _ReferralScreenState extends State<ReferralScreen> with SingleTickerProvid
               padding: const EdgeInsets.all(16),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
-                  _buildReferralCodeCard(auth.user?.referralCode ?? ''),
+                  _buildReferralCodeCard(prov.codeInfo?.referralCode ?? ''),
                   const SizedBox(height: 16),
-                  _buildReferralStats(ref),
+                  _buildReferralStats(prov),
                   const SizedBox(height: 16),
-                  _buildSearchBar(),
+                  _buildSearchBar(prov),
                   const SizedBox(height: 12),
                 ]),
               ),
             ),
-            if (ref.isLoading && ref.referrals.isEmpty)
+            if (prov.isLoading && (prov.tree?.level1.isEmpty ?? true))
               SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (_, i) => Padding(
@@ -118,14 +118,14 @@ class _ReferralScreenState extends State<ReferralScreen> with SingleTickerProvid
                   childCount: 6,
                 ),
               )
-            else if (ref.referrals.isEmpty)
+            else if (prov.filteredLevel1.isEmpty)
               SliverToBoxAdapter(
                 child: EmptyState(
                   title: 'Belum ada referral',
                   subtitle: 'Bagikan kode referral Anda untuk mengundang orang bergabung',
                   icon: Icons.group_add_outlined,
                   actionLabel: 'Bagikan Kode',
-                  onAction: () => _shareCode(auth.user?.referralCode ?? ''),
+                  onAction: () => _shareCode(prov.codeInfo?.referralCode ?? ''),
                 ),
               )
             else
@@ -133,23 +133,11 @@ class _ReferralScreenState extends State<ReferralScreen> with SingleTickerProvid
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate(
-                    (_, i) {
-                      if (i == ref.referrals.length) {
-                        if (ref.pagination?.hasNextPage == true) {
-                          ref.loadReferrals();
-                          return const Padding(
-                            padding: EdgeInsets.all(16),
-                            child: Center(child: CircularProgressIndicator()),
-                          );
-                        }
-                        return null;
-                      }
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: _buildReferralItem(ref.referrals[i]),
-                      );
-                    },
-                    childCount: ref.referrals.length + (ref.pagination?.hasNextPage == true ? 1 : 0),
+                    (_, i) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _buildReferralItem(prov.filteredLevel1[i]),
+                    ),
+                    childCount: prov.filteredLevel1.length,
                   ),
                 ),
               ),
@@ -212,11 +200,7 @@ class _ReferralScreenState extends State<ReferralScreen> with SingleTickerProvid
                         SizedBox(width: 6),
                         Text(
                           'Bagikan',
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                          ),
+                          style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 14),
                         ),
                       ],
                     ),
@@ -230,15 +214,30 @@ class _ReferralScreenState extends State<ReferralScreen> with SingleTickerProvid
     );
   }
 
-  Widget _buildReferralStats(ReferralProvider ref) {
-    final summary = ref.summary;
+  Widget _buildReferralStats(ReferralProvider prov) {
+    final info = prov.codeInfo;
     return Row(
       children: [
-        _statCard('Total', summary?.totalReferrals ?? 0, AppColors.primary, Icons.people_rounded),
+        _statCard('Total', info?.totalReferrals ?? 0, AppColors.primary, Icons.people_rounded),
         const SizedBox(width: 10),
-        _statCard('Aktif', summary?.activeReferrals ?? 0, AppColors.success, Icons.verified_user_rounded),
+        Expanded(
+          child: AppCard(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              children: [
+                const Icon(Icons.card_giftcard_rounded, color: AppColors.success, size: 22),
+                const SizedBox(height: 6),
+                Text(
+                  info != null ? CurrencyFormatter.compact(info.totalRewarded) : '-',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.success),
+                ),
+                const Text('Total Reward', style: TextStyle(fontSize: 10, color: AppColors.textSecondary), textAlign: TextAlign.center),
+              ],
+            ),
+          ),
+        ),
         const SizedBox(width: 10),
-        _statCard('Tidak Aktif', summary?.inactiveReferrals ?? 0, AppColors.warning, Icons.person_off_rounded),
+        _statCard('Langsung', prov.tree?.directReferrals ?? 0, AppColors.info, Icons.person_add_rounded),
       ],
     );
   }
@@ -259,7 +258,7 @@ class _ReferralScreenState extends State<ReferralScreen> with SingleTickerProvid
     );
   }
 
-  Widget _buildSearchBar() {
+  Widget _buildSearchBar(ReferralProvider prov) {
     return TextField(
       controller: _searchCtrl,
       decoration: InputDecoration(
@@ -270,16 +269,16 @@ class _ReferralScreenState extends State<ReferralScreen> with SingleTickerProvid
                 icon: const Icon(Icons.clear_rounded),
                 onPressed: () {
                   _searchCtrl.clear();
-                  context.read<ReferralProvider>().setSearch('');
+                  prov.setSearch('');
                 },
               )
             : null,
       ),
-      onChanged: (v) => context.read<ReferralProvider>().setSearch(v),
+      onChanged: (v) => prov.setSearch(v),
     );
   }
 
-  Widget _buildReferralItem(referral) {
+  Widget _buildReferralItem(ReferralTreeMemberModel member) {
     return AppCard(
       padding: const EdgeInsets.all(14),
       child: Row(
@@ -288,7 +287,7 @@ class _ReferralScreenState extends State<ReferralScreen> with SingleTickerProvid
             radius: 22,
             backgroundColor: AppColors.primary.withOpacity(0.1),
             child: Text(
-              referral.name.isNotEmpty ? referral.name[0].toUpperCase() : '?',
+              member.name.isNotEmpty ? member.name[0].toUpperCase() : '?',
               style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary),
             ),
           ),
@@ -297,12 +296,10 @@ class _ReferralScreenState extends State<ReferralScreen> with SingleTickerProvid
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(referral.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                Text(referral.email, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                const SizedBox(height: 4),
+                Text(member.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                 Text(
-                  DateFormatter.timeAgo(referral.createdAt),
-                  style: const TextStyle(fontSize: 11, color: AppColors.textHint),
+                  'Bergabung ${DateFormatter.formatDate(member.joinedAt)}',
+                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                 ),
               ],
             ),
@@ -310,15 +307,15 @@ class _ReferralScreenState extends State<ReferralScreen> with SingleTickerProvid
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: (referral.isActiveReferral ? AppColors.success : AppColors.textHint).withOpacity(0.1),
+              color: (member.hasInitialDeposit ? AppColors.success : AppColors.textHint).withOpacity(0.1),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              referral.isActiveReferral ? 'Aktif' : 'Tidak Aktif',
+              member.hasInitialDeposit ? 'Aktif' : 'Belum Deposit',
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
-                color: referral.isActiveReferral ? AppColors.success : AppColors.textSecondary,
+                color: member.hasInitialDeposit ? AppColors.success : AppColors.textSecondary,
               ),
             ),
           ),
@@ -327,12 +324,12 @@ class _ReferralScreenState extends State<ReferralScreen> with SingleTickerProvid
     );
   }
 
-  Widget _buildGroupTab() {
+  Widget _buildBusinessTab() {
     return Consumer<ReferralProvider>(
       builder: (_, prov, __) => RefreshIndicator(
-        onRefresh: () => prov.loadGroups(refresh: true),
+        onRefresh: () => prov.loadBusinesses(refresh: true),
         color: AppColors.primary,
-        child: prov.groupsLoading && prov.groups.isEmpty
+        child: prov.businessesLoading && prov.businesses.isEmpty
             ? ListView.builder(
                 padding: const EdgeInsets.all(16),
                 itemCount: 5,
@@ -341,23 +338,32 @@ class _ReferralScreenState extends State<ReferralScreen> with SingleTickerProvid
                   child: ShimmerLoading(height: 80, borderRadius: BorderRadius.circular(16)),
                 ),
               )
-            : prov.groups.isEmpty
+            : prov.businesses.isEmpty
                 ? const EmptyState(
-                    title: 'Belum ada grup',
-                    subtitle: 'Grup akan muncul saat Anda bergabung dalam jaringan referral',
-                    icon: Icons.groups_outlined,
+                    title: 'Belum ada bisnis',
+                    subtitle: 'Bisnis yang tersedia untuk investasi akan tampil di sini',
+                    icon: Icons.business_outlined,
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-                    itemCount: prov.groups.length,
+                    itemCount: prov.businesses.length + (prov.businessPagination?.hasNextPage == true ? 1 : 0),
                     itemBuilder: (_, i) {
-                      final group = prov.groups[i];
+                      if (i >= prov.businesses.length) {
+                        prov.loadBusinesses();
+                        return const Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+                      final biz = prov.businesses[i];
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12),
                         child: AppCard(
                           onTap: () => Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => GroupDetailScreen(groupId: group.id, groupName: group.name)),
+                            MaterialPageRoute(
+                              builder: (_) => GroupDetailScreen(businessId: biz.id, businessName: biz.name),
+                            ),
                           ),
                           child: Row(
                             children: [
@@ -368,22 +374,36 @@ class _ReferralScreenState extends State<ReferralScreen> with SingleTickerProvid
                                   color: AppColors.primary.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: const Icon(Icons.groups_rounded, color: AppColors.primary, size: 24),
+                                child: const Icon(Icons.business_rounded, color: AppColors.primary, size: 24),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(group.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                                    Text(biz.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                                     const SizedBox(height: 4),
                                     Text(
-                                      '${group.membersCount} anggota',
+                                      biz.category,
                                       style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    LinearProgressIndicator(
+                                      value: biz.investorProgress,
+                                      backgroundColor: AppColors.divider,
+                                      color: AppColors.primary,
+                                      minHeight: 4,
+                                      borderRadius: BorderRadius.circular(2),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${biz.currentInvestors} / ${biz.targetInvestors} investor',
+                                      style: const TextStyle(fontSize: 11, color: AppColors.textHint),
                                     ),
                                   ],
                                 ),
                               ),
+                              const SizedBox(width: 8),
                               const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.textHint),
                             ],
                           ),

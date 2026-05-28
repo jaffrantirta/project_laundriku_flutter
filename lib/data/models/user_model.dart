@@ -2,54 +2,72 @@ class UserModel {
   final int id;
   final String name;
   final String email;
-  final String? emailVerifiedAt;
-  final String referralCode;
-  final bool isActiveReferral;
-  final int? referredById;
+  final String? phone;
   final String? createdAt;
 
   const UserModel({
     required this.id,
     required this.name,
     required this.email,
-    this.emailVerifiedAt,
-    required this.referralCode,
-    required this.isActiveReferral,
-    this.referredById,
+    this.phone,
     this.createdAt,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) => UserModel(
-        id: json['id'],
-        name: json['name'],
-        email: json['email'],
-        emailVerifiedAt: json['email_verified_at'],
-        referralCode: json['referral_code'] ?? '',
-        isActiveReferral: json['is_active_referral'] == true || json['is_active_referral'] == 1,
-        referredById: json['referred_by_id'],
+        id: _parseInt(json['id']),
+        name: json['name'] ?? '',
+        email: json['email'] ?? '',
+        phone: json['phone'],
         createdAt: json['created_at'],
       );
+
+  static int _parseInt(dynamic v) {
+    if (v == null) return 0;
+    if (v is int) return v;
+    if (v is double) return v.toInt();
+    return (double.tryParse(v.toString()) ?? 0).toInt();
+  }
 
   Map<String, dynamic> toJson() => {
         'id': id,
         'name': name,
         'email': email,
-        'email_verified_at': emailVerifiedAt,
-        'referral_code': referralCode,
-        'is_active_referral': isActiveReferral,
-        'referred_by_id': referredById,
+        'phone': phone,
         'created_at': createdAt,
       };
 }
 
-class WalletModel {
+class BalanceModel {
   final int balance;
-  final String balanceFormatted;
+  final int investmentProfit;
+  final int referralReward;
+  final bool isVerified;
+  final bool hasInitialDeposit;
 
-  const WalletModel({required this.balance, required this.balanceFormatted});
+  const BalanceModel({
+    required this.balance,
+    required this.investmentProfit,
+    required this.referralReward,
+    required this.isVerified,
+    required this.hasInitialDeposit,
+  });
 
-  factory WalletModel.fromJson(Map<String, dynamic> json) => WalletModel(
-        balance: json['balance'] ?? 0,
-        balanceFormatted: json['balance_formatted'] ?? 'Rp 0',
-      );
+  factory BalanceModel.fromJson(Map<String, dynamic> json) {
+    final data = (json['data'] ?? json) as Map<String, dynamic>;
+    final breakdown = (data['breakdown'] as Map<String, dynamic>?) ?? {};
+    return BalanceModel(
+      balance: _parseInt(data['balance']),
+      investmentProfit: _parseInt(breakdown['investment_profit']),
+      referralReward: _parseInt(breakdown['referral_reward']),
+      isVerified: data['is_verified'] == true,
+      hasInitialDeposit: data['has_initial_deposit'] == true,
+    );
+  }
+
+  static int _parseInt(dynamic v) {
+    if (v == null) return 0;
+    if (v is int) return v;
+    if (v is double) return v.toInt();
+    return (double.tryParse(v.toString()) ?? 0).toInt();
+  }
 }

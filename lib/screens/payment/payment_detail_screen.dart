@@ -6,15 +6,15 @@ import '../../data/services/api_service.dart';
 import '../../widgets/app_widgets.dart';
 
 class PaymentDetailScreen extends StatefulWidget {
-  final String orderId;
-  const PaymentDetailScreen({super.key, required this.orderId});
+  final int transactionId;
+  const PaymentDetailScreen({super.key, required this.transactionId});
 
   @override
   State<PaymentDetailScreen> createState() => _PaymentDetailScreenState();
 }
 
 class _PaymentDetailScreenState extends State<PaymentDetailScreen> {
-  PaymentModel? _payment;
+  TransactionModel? _transaction;
   bool _loading = true;
 
   @override
@@ -26,9 +26,10 @@ class _PaymentDetailScreenState extends State<PaymentDetailScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final res = await ApiService.getPaymentDetail(widget.orderId);
+      final res = await ApiService.getPaymentStatus(widget.transactionId);
+      final data = res['data'] ?? res;
       setState(() {
-        _payment = PaymentModel.fromJson(res['data']);
+        _transaction = TransactionModel.fromJson(data['transaction'] ?? data);
         _loading = false;
       });
     } catch (_) {
@@ -43,7 +44,7 @@ class _PaymentDetailScreenState extends State<PaymentDetailScreen> {
       appBar: AppBar(title: const Text('Detail Pembayaran')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _payment == null
+          : _transaction == null
               ? const EmptyState(title: 'Pembayaran tidak ditemukan', icon: Icons.receipt_long_outlined)
               : RefreshIndicator(
                   onRefresh: _load,
@@ -55,10 +56,6 @@ class _PaymentDetailScreenState extends State<PaymentDetailScreen> {
                         _buildStatusCard(),
                         const SizedBox(height: 16),
                         _buildDetailsCard(),
-                        if (_payment!.paymentInfo != null) ...[
-                          const SizedBox(height: 16),
-                          _buildPaymentInfoCard(),
-                        ],
                       ],
                     ),
                   ),
@@ -67,9 +64,9 @@ class _PaymentDetailScreenState extends State<PaymentDetailScreen> {
   }
 
   Widget _buildStatusCard() {
-    final p = _payment!;
-    final isSuccess = p.status.value == 2;
-    final isPending = p.status.value == 0 || p.status.value == 1;
+    final t = _transaction!;
+    final isSuccess = t.statusValue == 2;
+    final isPending = t.statusValue == 0;
     final color = isSuccess ? AppColors.success : isPending ? AppColors.warning : AppColors.error;
     final icon = isSuccess ? Icons.check_circle_rounded : isPending ? Icons.pending_rounded : Icons.cancel_rounded;
 
@@ -79,10 +76,10 @@ class _PaymentDetailScreenState extends State<PaymentDetailScreen> {
         children: [
           Icon(icon, color: Colors.white, size: 48),
           const SizedBox(height: 12),
-          Text(p.status.label, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
+          Text(t.statusLabel, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
           const SizedBox(height: 8),
           Text(
-            CurrencyFormatter.format(p.grossAmount),
+            CurrencyFormatter.format(t.amount),
             style: const TextStyle(color: Colors.white70, fontSize: 16),
           ),
         ],
@@ -91,7 +88,7 @@ class _PaymentDetailScreenState extends State<PaymentDetailScreen> {
   }
 
   Widget _buildDetailsCard() {
-    final p = _payment!;
+    final t = _transaction!;
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -100,40 +97,12 @@ class _PaymentDetailScreenState extends State<PaymentDetailScreen> {
           const SizedBox(height: 12),
           const Divider(height: 1),
           const SizedBox(height: 12),
-          InfoRow(label: 'Order ID', value: p.orderId),
-          InfoRow(label: 'Jenis', value: p.type.label),
-          InfoRow(label: 'Jumlah', value: CurrencyFormatter.format(p.amount)),
-          InfoRow(label: 'Biaya Admin', value: CurrencyFormatter.format(p.adminFee)),
-          InfoRow(label: 'Total', value: CurrencyFormatter.format(p.grossAmount), bold: true, valueColor: AppColors.primary),
-          if (p.paymentType != null) InfoRow(label: 'Metode', value: p.paymentType!.label),
-          if (p.paidAt != null) InfoRow(label: 'Dibayar', value: DateFormatter.formatDateTime(p.paidAt)),
-          if (p.expireTime != null) InfoRow(label: 'Kadaluarsa', value: DateFormatter.formatDateTime(p.expireTime)),
-          InfoRow(label: 'Dibuat', value: DateFormatter.formatDateTime(p.createdAt)),
-          if (p.transactionId != null) InfoRow(label: 'Transaction ID', value: p.transactionId!),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPaymentInfoCard() {
-    final info = _payment!.paymentInfo!;
-    return AppCard(
-      color: AppColors.primary.withOpacity(0.04),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.account_balance_rounded, color: AppColors.primary, size: 18),
-              SizedBox(width: 8),
-              Text('Info Pembayaran', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary)),
-            ],
-          ),
-          const Divider(height: 16),
-          if (info['bank'] != null) InfoRow(label: 'Bank', value: info['bank']),
-          if (info['account_number'] != null)
-            InfoRow(label: 'No. Rekening', value: info['account_number'], bold: true, valueColor: AppColors.primary),
-          if (info['account_name'] != null) InfoRow(label: 'Atas Nama', value: info['account_name']),
+          InfoRow(label: 'ID Transaksi', value: '#${t.id}'),
+          InfoRow(label: 'Jenis', value: t.typeLabel),
+          InfoRow(label: 'Jumlah', value: CurrencyFormatter.format(t.amount), bold: true, valueColor: AppColors.primary),
+          InfoRow(label: 'Status', value: t.statusLabel),
+          if (t.confirmedAt != null) InfoRow(label: 'Dikonfirmasi', value: DateFormatter.formatDateTime(t.confirmedAt)),
+          InfoRow(label: 'Dibuat', value: DateFormatter.formatDateTime(t.createdAt)),
         ],
       ),
     );

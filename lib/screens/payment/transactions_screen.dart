@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
-import '../../data/models/bonus_model.dart';
 import '../../data/models/payment_model.dart';
+import '../../data/models/referral_model.dart';
 import '../../data/models/withdrawal_model.dart';
 import '../../providers/transaction_provider.dart';
 import '../../widgets/app_widgets.dart';
@@ -37,7 +37,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
     await Future.wait([
       prov.loadPayments(refresh: true),
       prov.loadWithdrawals(refresh: true),
-      prov.loadBonuses(refresh: true),
+      prov.loadRewards(refresh: true),
     ]);
   }
 
@@ -55,7 +55,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
           tabs: const [
             Tab(text: 'Pembayaran'),
             Tab(text: 'Penarikan'),
-            Tab(text: 'Bonus'),
+            Tab(text: 'Reward'),
           ],
         ),
       ),
@@ -64,7 +64,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
         children: [
           _buildPaymentsTab(),
           _buildWithdrawalsTab(),
-          _buildBonusesTab(),
+          _buildRewardsTab(),
         ],
       ),
     );
@@ -104,12 +104,12 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
     );
   }
 
-  Widget _paymentItem(PaymentModel p) {
-    final color = _paymentTypeColor(p.type.value);
+  Widget _paymentItem(TransactionModel t) {
+    final color = _transactionColor(t.type);
     return AppCard(
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => PaymentDetailScreen(orderId: p.orderId)),
+        MaterialPageRoute(builder: (_) => PaymentDetailScreen(transactionId: t.id)),
       ),
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -121,16 +121,16 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
               color: color.withOpacity(0.12),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(_paymentTypeIcon(p.type.value), color: color, size: 22),
+            child: Icon(_transactionIcon(t.type), color: color, size: 22),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(p.type.label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                Text(p.orderId, style: const TextStyle(fontSize: 11, color: AppColors.textHint)),
-                Text(DateFormatter.formatDateTime(p.createdAt), style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                Text(t.typeLabel, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                Text('#${t.id}', style: const TextStyle(fontSize: 11, color: AppColors.textHint)),
+                Text(DateFormatter.formatDateTime(t.createdAt), style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
               ],
             ),
           ),
@@ -138,11 +138,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                CurrencyFormatter.format(p.grossAmount),
+                CurrencyFormatter.format(t.amount),
                 style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
               ),
               const SizedBox(height: 4),
-              StatusBadge(label: p.status.label, statusValue: p.status.value),
+              StatusBadge(label: t.statusLabel, statusValue: t.statusValue),
             ],
           ),
         ],
@@ -150,29 +150,40 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
     );
   }
 
-  Color _paymentTypeColor(int type) {
+  Color _transactionColor(String type) {
     switch (type) {
-      case 0:
+      case 'initial_deposit':
         return AppColors.info;
-      case 1:
+      case 'investment':
+      case 'installment':
         return AppColors.primary;
-      case 2:
+      case 'profit':
         return AppColors.success;
+      case 'referral_reward':
+        return AppColors.accent;
+      case 'withdrawal':
+        return AppColors.error;
       default:
         return AppColors.textSecondary;
     }
   }
 
-  IconData _paymentTypeIcon(int type) {
+  IconData _transactionIcon(String type) {
     switch (type) {
-      case 0:
+      case 'initial_deposit':
         return Icons.account_circle_rounded;
-      case 1:
-        return Icons.card_membership_rounded;
-      case 2:
-        return Icons.add_circle_rounded;
+      case 'investment':
+        return Icons.business_center_rounded;
+      case 'installment':
+        return Icons.payments_rounded;
+      case 'profit':
+        return Icons.trending_up_rounded;
+      case 'referral_reward':
+        return Icons.card_giftcard_rounded;
+      case 'withdrawal':
+        return Icons.arrow_upward_rounded;
       default:
-        return Icons.payment_rounded;
+        return Icons.receipt_rounded;
     }
   }
 
@@ -222,7 +233,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
               children: [
                 const Text('Penarikan Saldo', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                 Text(DateFormatter.formatDateTime(w.createdAt), style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                Text('Diterima: ${CurrencyFormatter.format(w.grossAmount)}', style: const TextStyle(fontSize: 11, color: AppColors.success)),
+                Text('${w.bankName} • ${w.accountNumber}', style: const TextStyle(fontSize: 11, color: AppColors.textHint)),
               ],
             ),
           ),
@@ -234,7 +245,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
                 style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.error),
               ),
               const SizedBox(height: 4),
-              StatusBadge(label: w.status.label, statusValue: w.status.value, isPayment: false),
+              StatusBadge(label: w.statusLabel, statusValue: w.statusValue, isPayment: false),
             ],
           ),
         ],
@@ -242,70 +253,41 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
     );
   }
 
-  Widget _buildBonusesTab() {
+  Widget _buildRewardsTab() {
     return Consumer<TransactionProvider>(
       builder: (_, prov, __) => RefreshIndicator(
-        onRefresh: () => prov.loadBonuses(refresh: true),
+        onRefresh: () => prov.loadRewards(refresh: true),
         color: AppColors.primary,
-        child: prov.bonusesLoading && prov.bonuses.isEmpty
+        child: prov.rewardsLoading && prov.rewards.isEmpty
             ? _shimmerList()
-            : prov.bonuses.isEmpty
+            : prov.rewards.isEmpty
                 ? const EmptyState(
-                    title: 'Belum ada bonus',
-                    subtitle: 'Bonus akan masuk saat referral Anda aktif dan melakukan transaksi',
+                    title: 'Belum ada reward',
+                    subtitle: 'Reward referral akan masuk saat referral Anda menyelesaikan deposit',
                     icon: Icons.card_giftcard_outlined,
                   )
-                : Column(
-                    children: [
-                      if (prov.bonusTotal > 0)
-                        Container(
-                          margin: const EdgeInsets.all(16),
-                          child: GradientCard(
-                            colors: const [Color(0xFF6A1B9A), Color(0xFF9C27B0)],
-                            child: Row(
-                              children: [
-                                const Icon(Icons.card_giftcard_rounded, color: Colors.white, size: 28),
-                                const SizedBox(width: 12),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text('Total Bonus', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                                    Text(
-                                      CurrencyFormatter.format(prov.bonusTotal),
-                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      Expanded(
-                        child: ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                          itemCount: prov.bonuses.length + (prov.bonusPagination?.hasNextPage == true ? 1 : 0),
-                          itemBuilder: (_, i) {
-                            if (i >= prov.bonuses.length) {
-                              prov.loadBonuses();
-                              return const Padding(
-                                padding: EdgeInsets.all(16),
-                                child: Center(child: CircularProgressIndicator()),
-                              );
-                            }
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: _bonusItem(prov.bonuses[i]),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                    itemCount: prov.rewards.length + (prov.rewardPagination?.hasNextPage == true ? 1 : 0),
+                    itemBuilder: (_, i) {
+                      if (i >= prov.rewards.length) {
+                        prov.loadRewards();
+                        return const Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _rewardItem(prov.rewards[i]),
+                      );
+                    },
                   ),
       ),
     );
   }
 
-  Widget _bonusItem(BonusModel b) {
+  Widget _rewardItem(ReferralRewardModel r) {
     return AppCard(
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -319,12 +301,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
             ),
             child: Center(
               child: Text(
-                'L${b.level}',
-                style: const TextStyle(
-                  color: AppColors.success,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 14,
-                ),
+                'L${r.level}',
+                style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.w800, fontSize: 14),
               ),
             ),
           ),
@@ -333,18 +311,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Bonus Level ${b.level}',
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-                ),
-                Text(
-                  'Dari: ${b.fromUserName ?? 'N/A'}',
-                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                ),
-                Text(
-                  DateFormatter.timeAgo(b.createdAt),
-                  style: const TextStyle(fontSize: 11, color: AppColors.textHint),
-                ),
+                Text('Reward Level ${r.level}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                Text('Dari: ${r.fromUser}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                Text(DateFormatter.timeAgo(r.createdAt), style: const TextStyle(fontSize: 11, color: AppColors.textHint)),
               ],
             ),
           ),
@@ -352,17 +321,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> with SingleTick
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '+${CurrencyFormatter.format(b.amount)}',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                  color: AppColors.success,
-                ),
+                '+${CurrencyFormatter.format(r.amount)}',
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.success),
               ),
-              Text(
-                '${b.percentage}%',
-                style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-              ),
+              const SizedBox(height: 4),
+              StatusBadge(label: r.statusLabel, statusValue: r.statusValue),
             ],
           ),
         ],

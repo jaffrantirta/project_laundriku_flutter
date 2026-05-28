@@ -9,7 +9,7 @@ import '../../providers/home_provider.dart';
 import '../../widgets/app_widgets.dart';
 import '../payment/topup_screen.dart';
 import '../withdrawal/withdrawal_screen.dart';
-import '../leaderboard/leaderboard_screen.dart';
+import '../business/business_screen.dart';
 import '../identity/identity_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -29,7 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _load() async {
     final auth = context.read<AuthProvider>();
     final home = context.read<HomeProvider>();
-    await Future.wait([auth.loadWallet(), home.loadDashboard()]);
+    await Future.wait([auth.loadBalance(), home.loadDashboard()]);
   }
 
   @override
@@ -51,13 +51,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 20),
                   _buildQuickActions(),
                   const SizedBox(height: 24),
-                  _buildIdentityBanner(),
+                  _buildVerificationBanner(),
                   const SizedBox(height: 24),
-                  _buildBonusSummary(),
+                  _buildBalanceBreakdown(),
                   const SizedBox(height: 24),
                   _buildReferralStats(),
                   const SizedBox(height: 24),
-                  _buildLeaderboardPreview(),
+                  _buildBusinessesPreview(),
                 ]),
               ),
             ),
@@ -133,7 +133,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        auth.user?.isActiveReferral == true
+                        auth.balance?.isVerified == true
                             ? Icons.verified_rounded
                             : Icons.pending_rounded,
                         color: Colors.white,
@@ -141,7 +141,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        auth.user?.isActiveReferral == true ? 'Aktif' : 'Tidak Aktif',
+                        auth.balance?.isVerified == true ? 'Terverifikasi' : 'Belum Verifikasi',
                         style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
                       ),
                     ],
@@ -151,7 +151,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              auth.wallet?.balanceFormatted ?? 'Rp 0',
+              CurrencyFormatter.format(auth.balance?.balance ?? 0),
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 32,
@@ -166,7 +166,7 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 _walletAction(
                   Icons.add_rounded,
-                  'Topup',
+                  'Deposit',
                   () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TopupScreen())),
                 ),
                 const SizedBox(width: 16),
@@ -177,9 +177,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(width: 16),
                 _walletAction(
-                  Icons.history_rounded,
-                  'Riwayat',
-                  () {},
+                  Icons.business_center_rounded,
+                  'Bisnis',
+                  () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BusinessScreen())),
                 ),
               ],
             ),
@@ -219,7 +219,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final actions = [
       {'icon': Icons.share_rounded, 'label': 'Bagikan\nReferral', 'color': AppColors.primary},
       {'icon': Icons.people_outline_rounded, 'label': 'Tim\nSaya', 'color': AppColors.accent},
-      {'icon': Icons.leaderboard_rounded, 'label': 'Papan\nPesat', 'color': AppColors.info},
+      {'icon': Icons.business_rounded, 'label': 'Bisnis\nTerbuka', 'color': AppColors.info},
       {'icon': Icons.receipt_long_rounded, 'label': 'Pembayaran', 'color': AppColors.warning},
     ];
 
@@ -233,8 +233,8 @@ class _HomeScreenState extends State<HomeScreen> {
             return Expanded(
               child: GestureDetector(
                 onTap: () {
-                  if (a['label'] == 'Papan\nPesat') {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const LeaderboardScreen()));
+                  if (a['label'] == 'Bisnis\nTerbuka') {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const BusinessScreen()));
                   }
                 },
                 child: AppCard(
@@ -273,37 +273,47 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildIdentityBanner() {
-    return FutureBuilder(
-      future: _getIdentityStatus(),
+  Widget _buildVerificationBanner() {
+    return FutureBuilder<int?>(
+      future: _getVerificationStatus(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const SizedBox.shrink();
-        final status = snapshot.data as int?;
+        final status = snapshot.data;
         if (status == 1) return const SizedBox.shrink();
 
         Color bgColor;
         IconData icon;
         String title, subtitle;
+        VoidCallback onTap;
 
-        if (status == null) {
+        if (status == 2) {
+          bgColor = AppColors.info;
+          icon = Icons.payments_rounded;
+          title = 'Lengkapi Deposit Awal';
+          subtitle = 'Selesaikan deposit awal untuk mulai berinvestasi';
+          onTap = () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TopupScreen()));
+        } else if (status == null) {
           bgColor = AppColors.warning;
           icon = Icons.badge_outlined;
           title = 'Verifikasi Identitas';
-          subtitle = 'Lengkapi KTP untuk bisa melakukan penarikan';
+          subtitle = 'Lengkapi identitas untuk mengakses semua fitur';
+          onTap = () => Navigator.push(context, MaterialPageRoute(builder: (_) => const IdentityScreen()));
         } else if (status == 0) {
           bgColor = AppColors.info;
           icon = Icons.hourglass_empty_rounded;
           title = 'Identitas Sedang Diverifikasi';
           subtitle = 'Mohon tunggu, proses sedang berlangsung';
+          onTap = () => Navigator.push(context, MaterialPageRoute(builder: (_) => const IdentityScreen()));
         } else {
           bgColor = AppColors.error;
           icon = Icons.error_outline_rounded;
           title = 'Identitas Ditolak';
           subtitle = 'Klik untuk melihat alasan dan submit ulang';
+          onTap = () => Navigator.push(context, MaterialPageRoute(builder: (_) => const IdentityScreen()));
         }
 
         return GestureDetector(
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const IdentityScreen())),
+          onTap: onTap,
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -341,93 +351,52 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Future<int?> _getIdentityStatus() async {
+  Future<int?> _getVerificationStatus() async {
     try {
-      final res = await ApiService.getIdentityStatus();
-      return res['data']['status'];
+      final res = await ApiService.getVerificationStatus();
+      final data = res['data'] ?? res;
+      final isVerified = data['is_verified'] == true;
+      final hasDeposit = data['has_initial_deposit'] == true;
+      if (isVerified && hasDeposit) return 1; // fully onboarded
+      if (isVerified) return 2; // verified but no deposit
+      final vStatus = data['verification_status'];
+      if (vStatus == 'pending') return 0;
+      if (vStatus == 'rejected') return -1;
+      return null; // not submitted
     } catch (_) {
       return null;
     }
   }
 
-  Widget _buildBonusSummary() {
-    return Consumer<HomeProvider>(
-      builder: (_, home, __) {
-        final summary = home.bonusSummary;
+  Widget _buildBalanceBreakdown() {
+    return Consumer<AuthProvider>(
+      builder: (_, auth, __) {
+        final balance = auth.balance;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SectionHeader(title: 'Ringkasan Bonus', actionLabel: 'Lihat Semua'),
+            const SectionHeader(title: 'Ringkasan Saldo'),
             const SizedBox(height: 12),
             AppCard(
               child: Column(
                 children: [
                   Row(
                     children: [
-                      _bonusStat(
-                        'Total Bonus',
-                        summary != null ? CurrencyFormatter.compact(summary.totalBonus) : '-',
+                      _balanceStat(
+                        'Profit Investasi',
+                        balance != null ? CurrencyFormatter.compact(balance.investmentProfit) : '-',
                         AppColors.primary,
-                        Icons.account_balance_wallet_rounded,
+                        Icons.trending_up_rounded,
                       ),
                       const SizedBox(width: 12),
-                      _bonusStat(
-                        'Transaksi',
-                        summary?.totalTransactions.toString() ?? '-',
+                      _balanceStat(
+                        'Reward Referral',
+                        balance != null ? CurrencyFormatter.compact(balance.referralReward) : '-',
                         AppColors.accent,
-                        Icons.swap_horiz_rounded,
+                        Icons.card_giftcard_rounded,
                       ),
                     ],
                   ),
-                  if (summary != null && summary.bonusByLevel.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    const Divider(height: 1),
-                    const SizedBox(height: 12),
-                    ...summary.bonusByLevel.map((b) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 28,
-                                height: 28,
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    'L${b.level}',
-                                    style: const TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.primary,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Text(
-                                'Level ${b.level}',
-                                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                              ),
-                              const Spacer(),
-                              Text(
-                                CurrencyFormatter.format(b.totalAmount),
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                '(${b.count}x)',
-                                style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                              ),
-                            ],
-                          ),
-                        )),
-                  ],
                 ],
               ),
             ),
@@ -437,7 +406,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _bonusStat(String label, String value, Color color, IconData icon) {
+  Widget _balanceStat(String label, String value, Color color, IconData icon) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(14),
@@ -455,11 +424,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
                 Text(
                   value,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: color,
-                  ),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: color),
                 ),
               ],
             ),
@@ -472,7 +437,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildReferralStats() {
     return Consumer<HomeProvider>(
       builder: (_, home, __) {
-        final summary = home.referralSummary;
+        final info = home.referralInfo;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -480,11 +445,13 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 12),
             Row(
               children: [
-                _referralStat('Total', summary?.totalReferrals ?? 0, AppColors.primary),
+                _referralStat('Total Referral', info?.totalReferrals ?? 0, AppColors.primary),
                 const SizedBox(width: 12),
-                _referralStat('Aktif', summary?.activeReferrals ?? 0, AppColors.success),
-                const SizedBox(width: 12),
-                _referralStat('Tidak Aktif', summary?.inactiveReferrals ?? 0, AppColors.warning),
+                _referralStatCurrency(
+                  'Total Reward',
+                  info != null ? CurrencyFormatter.compact(info.totalRewarded) : '-',
+                  AppColors.success,
+                ),
               ],
             ),
           ],
@@ -499,46 +466,58 @@ class _HomeScreenState extends State<HomeScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            Text(
-              '$count',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: color),
-            ),
+            Text('$count', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: color)),
             const SizedBox(height: 4),
-            Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+            Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary), textAlign: TextAlign.center),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildLeaderboardPreview() {
+  Widget _referralStatCurrency(String label, String value, Color color) {
+    return Expanded(
+      child: AppCard(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: color)),
+            const SizedBox(height: 4),
+            Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary), textAlign: TextAlign.center),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBusinessesPreview() {
     return Consumer<HomeProvider>(
       builder: (_, home, __) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SectionHeader(
-              title: 'Papan Peringkat',
+              title: 'Bisnis Terbuka',
               actionLabel: 'Lihat Semua',
               onAction: () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const LeaderboardScreen()),
+                MaterialPageRoute(builder: (_) => const BusinessScreen()),
               ),
             ),
             const SizedBox(height: 12),
             AppCard(
-              child: home.topLeaderboard.isEmpty
+              child: home.topBusinesses.isEmpty
                   ? const Center(
                       child: Padding(
                         padding: EdgeInsets.all(16),
-                        child: Text('Belum ada data', style: TextStyle(color: AppColors.textSecondary)),
+                        child: Text('Belum ada bisnis tersedia', style: TextStyle(color: AppColors.textSecondary)),
                       ),
                     )
                   : Column(
-                      children: home.topLeaderboard.asMap().entries.map((entry) {
+                      children: home.topBusinesses.asMap().entries.map((entry) {
                         final i = entry.key;
-                        final item = entry.value;
-                        return _leaderboardRow(item.rank, item.user.name, item.amount, i < 2);
+                        final b = entry.value;
+                        return _businessRow(b, i < home.topBusinesses.length - 1);
                       }).toList(),
                     ),
             ),
@@ -548,14 +527,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _leaderboardRow(int rank, String name, int amount, bool divider) {
-    final rankColors = [
-      const Color(0xFFFFD700),
-      const Color(0xFFC0C0C0),
-      const Color(0xFFCD7F32),
-    ];
-    final color = rank <= 3 ? rankColors[rank - 1] : AppColors.textSecondary;
-
+  Widget _businessRow(business, bool divider) {
     return Column(
       children: [
         Padding(
@@ -563,33 +535,40 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Row(
             children: [
               Container(
-                width: 32,
-                height: 32,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(8),
+                  color: AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: Center(
-                  child: Text(
-                    '#$rank',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: color),
-                  ),
-                ),
+                child: const Icon(Icons.business_rounded, color: AppColors.primary, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  name,
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                  overflow: TextOverflow.ellipsis,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      business.name,
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      business.category,
+                      style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                    ),
+                  ],
                 ),
               ),
-              Text(
-                CurrencyFormatter.compact(amount),
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primary,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '${business.currentInvestors}/${business.targetInvestors}',
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.success),
                 ),
               ),
             ],
@@ -600,4 +579,3 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-

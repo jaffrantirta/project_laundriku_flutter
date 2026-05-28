@@ -1,111 +1,125 @@
-class PaymentModel {
+class TransactionModel {
   final int id;
-  final String orderId;
-  final PaymentTypeInfo type;
+  final String type;
   final int amount;
-  final int adminFee;
-  final int grossAmount;
-  final PaymentStatusInfo status;
-  final PaymentMethodInfo? paymentType;
-  final String? paidAt;
-  final String? expireTime;
-  final String? qrUrl;
-  final String? qrString;
-  final String? transactionId;
+  final String status;
+  final String? confirmedAt;
   final String? createdAt;
-  final Map<String, dynamic>? paymentInfo;
+  final String? qrCodeUrl;
+  final String? deepLinkUrl;
 
-  const PaymentModel({
+  const TransactionModel({
     required this.id,
-    required this.orderId,
     required this.type,
     required this.amount,
-    required this.adminFee,
-    required this.grossAmount,
     required this.status,
-    this.paymentType,
-    this.paidAt,
-    this.expireTime,
-    this.qrUrl,
-    this.qrString,
-    this.transactionId,
+    this.confirmedAt,
     this.createdAt,
-    this.paymentInfo,
+    this.qrCodeUrl,
+    this.deepLinkUrl,
   });
 
-  factory PaymentModel.fromJson(Map<String, dynamic> json) => PaymentModel(
-        id: json['id'],
-        orderId: json['order_id'],
-        type: PaymentTypeInfo.fromJson(json['type']),
-        amount: json['amount'],
-        adminFee: json['admin_fee'] ?? 0,
-        grossAmount: json['gross_amount'],
-        status: PaymentStatusInfo.fromJson(json['status']),
-        paymentType: json['payment_type'] != null
-            ? PaymentMethodInfo.fromJson(json['payment_type'])
-            : null,
-        paidAt: json['paid_at'],
-        expireTime: json['expire_time'],
-        qrUrl: json['qr_url'],
-        qrString: json['qr_string'],
-        transactionId: json['transaction_id'],
+  int get statusValue {
+    switch (status) {
+      case 'success':
+        return 2;
+      case 'failed':
+        return 3;
+      default:
+        return 0;
+    }
+  }
+
+  String get statusLabel {
+    switch (status) {
+      case 'success':
+        return 'Sukses';
+      case 'failed':
+        return 'Gagal';
+      default:
+        return 'Menunggu';
+    }
+  }
+
+  String get typeLabel {
+    switch (type) {
+      case 'initial_deposit':
+        return 'Deposit Awal';
+      case 'investment':
+        return 'Investasi';
+      case 'installment':
+        return 'Cicilan';
+      case 'profit':
+        return 'Profit';
+      case 'referral_reward':
+        return 'Reward Referral';
+      case 'withdrawal':
+        return 'Penarikan';
+      case 'refund':
+        return 'Refund';
+      default:
+        return type;
+    }
+  }
+
+  factory TransactionModel.fromJson(Map<String, dynamic> json) => TransactionModel(
+        id: _parseInt(json['id']),
+        type: json['type'] ?? '',
+        amount: _parseInt(json['amount']),
+        status: json['status'] ?? 'pending',
+        confirmedAt: json['confirmed_at'],
         createdAt: json['created_at'],
-        paymentInfo: json['payment_info'],
+        qrCodeUrl: json['midtrans_qr_code_url'],
+        deepLinkUrl: json['midtrans_deeplink_url'],
       );
+
+  static int _parseInt(dynamic v) {
+    if (v == null) return 0;
+    if (v is int) return v;
+    if (v is double) return v.toInt();
+    return (double.tryParse(v.toString()) ?? 0).toInt();
+  }
 }
 
-class PaymentTypeInfo {
-  final int value;
-  final String label;
+class BankDetailsModel {
+  final String bankName;
+  final String accountNumber;
+  final String accountName;
+  final int amount;
 
-  const PaymentTypeInfo({required this.value, required this.label});
-
-  factory PaymentTypeInfo.fromJson(Map<String, dynamic> json) =>
-      PaymentTypeInfo(value: json['value'], label: json['label']);
-}
-
-class PaymentStatusInfo {
-  final int value;
-  final String label;
-
-  const PaymentStatusInfo({required this.value, required this.label});
-
-  factory PaymentStatusInfo.fromJson(Map<String, dynamic> json) =>
-      PaymentStatusInfo(value: json['value'], label: json['label']);
-}
-
-class PaymentMethodInfo {
-  final String value;
-  final String label;
-
-  const PaymentMethodInfo({required this.value, required this.label});
-
-  factory PaymentMethodInfo.fromJson(Map<String, dynamic> json) =>
-      PaymentMethodInfo(value: json['value'], label: json['label']);
-}
-
-class TopupConfig {
-  final int minAmount;
-  final int adminFee;
-  final String paymentGateway;
-  final Map<String, dynamic>? paymentInfo;
-  final String? picWhatsapp;
-
-  const TopupConfig({
-    required this.minAmount,
-    required this.adminFee,
-    required this.paymentGateway,
-    this.paymentInfo,
-    this.picWhatsapp,
+  const BankDetailsModel({
+    required this.bankName,
+    required this.accountNumber,
+    required this.accountName,
+    required this.amount,
   });
 
-  bool get isManual => paymentGateway == 'manual';
-
-  factory TopupConfig.fromJson(Map<String, dynamic> json) => TopupConfig(
-        minAmount: json['min_amount'] ?? 25000,
-        adminFee: json['admin_fee'] ?? 0,
-        paymentGateway: json['payment_gateway'] ?? '',
-        paymentInfo: json['payment_info'],
-        picWhatsapp: json['pic_whatsapp'],
+  factory BankDetailsModel.fromJson(Map<String, dynamic> json) => BankDetailsModel(
+        bankName: json['bank_name'] ?? '',
+        accountNumber: json['account_number'] ?? '',
+        accountName: json['account_name'] ?? '',
+        amount: TransactionModel._parseInt(json['amount']),
       );
+}
+
+class InitialDepositModel {
+  final TransactionModel transaction;
+  final BankDetailsModel? bankDetails;
+
+  const InitialDepositModel({
+    required this.transaction,
+    this.bankDetails,
+  });
+
+  bool get isQris => transaction.qrCodeUrl != null;
+
+  factory InitialDepositModel.fromJson(Map<String, dynamic> json) {
+    final data = (json['data'] ?? json) as Map<String, dynamic>;
+    return InitialDepositModel(
+      transaction: TransactionModel.fromJson(data['transaction'] as Map<String, dynamic>),
+      bankDetails: data['bank_details'] != null
+          ? BankDetailsModel.fromJson(data['bank_details'] as Map<String, dynamic>)
+          : null,
+    );
+  }
 }

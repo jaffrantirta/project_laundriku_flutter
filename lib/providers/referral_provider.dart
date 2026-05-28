@@ -4,58 +4,51 @@ import '../data/models/referral_model.dart';
 import '../data/services/api_service.dart';
 
 class ReferralProvider extends ChangeNotifier {
-  ReferralSummaryModel? _summary;
-  List<ReferralModel> _referrals = [];
-  PaginationModel? _pagination;
+  ReferralCodeModel? _codeInfo;
+  ReferralTreeModel? _tree;
   bool _isLoading = false;
-  bool _isSummaryLoading = false;
+  bool _isCodeLoading = false;
   String _searchQuery = '';
 
-  List<GroupModel> _groups = [];
-  PaginationModel? _groupPagination;
-  bool _groupsLoading = false;
+  List<BusinessModel> _businesses = [];
+  PaginationModel? _businessPagination;
+  bool _businessesLoading = false;
 
-  ReferralSummaryModel? get summary => _summary;
-  List<ReferralModel> get referrals => _referrals;
-  PaginationModel? get pagination => _pagination;
+  ReferralCodeModel? get codeInfo => _codeInfo;
+  ReferralTreeModel? get tree => _tree;
   bool get isLoading => _isLoading;
-  bool get isSummaryLoading => _isSummaryLoading;
+  bool get isCodeLoading => _isCodeLoading;
   String get searchQuery => _searchQuery;
 
-  List<GroupModel> get groups => _groups;
-  PaginationModel? get groupPagination => _groupPagination;
-  bool get groupsLoading => _groupsLoading;
+  List<BusinessModel> get businesses => _businesses;
+  PaginationModel? get businessPagination => _businessPagination;
+  bool get businessesLoading => _businessesLoading;
 
-  Future<void> loadSummary() async {
-    _isSummaryLoading = true;
+  List<ReferralTreeMemberModel> get filteredLevel1 {
+    if (_searchQuery.isEmpty) return _tree?.level1 ?? [];
+    return (_tree?.level1 ?? [])
+        .where((m) => m.name.toLowerCase().contains(_searchQuery.toLowerCase()))
+        .toList();
+  }
+
+  Future<void> loadCodeInfo() async {
+    _isCodeLoading = true;
     notifyListeners();
     try {
-      final res = await ApiService.getReferralSummary();
-      _summary = ReferralSummaryModel.fromJson(res['data']);
+      final res = await ApiService.getReferralCode();
+      _codeInfo = ReferralCodeModel.fromJson(res);
     } catch (_) {}
-    _isSummaryLoading = false;
+    _isCodeLoading = false;
     notifyListeners();
   }
 
-  Future<void> loadReferrals({bool refresh = false}) async {
+  Future<void> loadTree({bool refresh = false}) async {
     if (_isLoading) return;
-    if (refresh) _referrals = [];
     _isLoading = true;
     notifyListeners();
     try {
-      final page = refresh ? 1 : (_pagination?.currentPage ?? 0) + 1;
-      final res = await ApiService.getReferrals(
-        page: page,
-        name: _searchQuery.isEmpty ? null : _searchQuery,
-      );
-      final data = res['data'];
-      final list = (data['referrals'] as List).map((e) => ReferralModel.fromJson(e)).toList();
-      if (refresh) {
-        _referrals = list;
-      } else {
-        _referrals.addAll(list);
-      }
-      _pagination = PaginationModel.fromJson(data['pagination']);
+      final res = await ApiService.getReferralTree();
+      _tree = ReferralTreeModel.fromJson(res);
     } catch (_) {}
     _isLoading = false;
     notifyListeners();
@@ -63,27 +56,34 @@ class ReferralProvider extends ChangeNotifier {
 
   void setSearch(String query) {
     _searchQuery = query;
-    loadReferrals(refresh: true);
+    notifyListeners();
   }
 
-  Future<void> loadGroups({bool refresh = false}) async {
-    if (_groupsLoading) return;
-    if (refresh) _groups = [];
-    _groupsLoading = true;
+  Future<void> loadBusinesses({bool refresh = false}) async {
+    if (_businessesLoading) return;
+    if (refresh) _businesses = [];
+    _businessesLoading = true;
     notifyListeners();
     try {
-      final page = refresh ? 1 : (_groupPagination?.currentPage ?? 0) + 1;
-      final res = await ApiService.getGroups(page: page);
+      final page = refresh ? 1 : (_businessPagination?.currentPage ?? 0) + 1;
+      final res = await ApiService.getBusinesses(page: page);
       final data = res['data'];
-      final list = (data['groups'] as List).map((e) => GroupModel.fromJson(e)).toList();
+      final list = (data['data'] as List<dynamic>? ?? [])
+          .map((e) => BusinessModel.fromJson(e as Map<String, dynamic>))
+          .toList();
       if (refresh) {
-        _groups = list;
+        _businesses = list;
       } else {
-        _groups.addAll(list);
+        _businesses.addAll(list);
       }
-      _groupPagination = PaginationModel.fromJson(data['pagination']);
+      _businessPagination = PaginationModel(
+        currentPage: data['current_page'] ?? 1,
+        lastPage: data['last_page'] ?? 1,
+        perPage: data['per_page'] ?? 15,
+        total: data['total'] ?? 0,
+      );
     } catch (_) {}
-    _groupsLoading = false;
+    _businessesLoading = false;
     notifyListeners();
   }
 }

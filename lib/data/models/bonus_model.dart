@@ -1,68 +1,64 @@
-class BonusModel {
+class BalanceHistoryItemModel {
   final int id;
-  final int userId;
-  final int fromUserId;
-  final int level;
-  final int percentage;
+  final String type;
   final int amount;
+  final String status;
+  final String? description;
   final String? createdAt;
-  final String? fromUserName;
 
-  const BonusModel({
+  const BalanceHistoryItemModel({
     required this.id,
-    required this.userId,
-    required this.fromUserId,
-    required this.level,
-    required this.percentage,
+    required this.type,
     required this.amount,
+    required this.status,
+    this.description,
     this.createdAt,
-    this.fromUserName,
   });
 
-  factory BonusModel.fromJson(Map<String, dynamic> json) => BonusModel(
+  int get statusValue {
+    switch (status) {
+      case 'success':
+        return 2;
+      case 'failed':
+        return 3;
+      default:
+        return 0;
+    }
+  }
+
+  String get statusLabel {
+    switch (status) {
+      case 'success':
+        return 'Sukses';
+      case 'failed':
+        return 'Gagal';
+      default:
+        return 'Menunggu';
+    }
+  }
+
+  String get typeLabel {
+    switch (type) {
+      case 'profit':
+        return 'Profit Investasi';
+      case 'referral_reward':
+        return 'Reward Referral';
+      case 'withdrawal':
+        return 'Penarikan';
+      case 'initial_deposit':
+        return 'Deposit Awal';
+      default:
+        return type;
+    }
+  }
+
+  factory BalanceHistoryItemModel.fromJson(Map<String, dynamic> json) => BalanceHistoryItemModel(
         id: json['id'],
-        userId: json['user_id'],
-        fromUserId: json['from_user_id'],
-        level: json['level'],
-        percentage: json['percentage'],
-        amount: json['amount'],
+        type: json['type'] ?? '',
+        amount: json['amount'] ?? 0,
+        status: json['status'] ?? 'success',
+        description: json['description'],
         createdAt: json['created_at'],
-        fromUserName: json['from_user']?['name'],
-      );
-}
-
-class BonusSummaryModel {
-  final int totalBonus;
-  final int totalTransactions;
-  final List<BonusByLevel> bonusByLevel;
-
-  const BonusSummaryModel({
-    required this.totalBonus,
-    required this.totalTransactions,
-    required this.bonusByLevel,
-  });
-
-  factory BonusSummaryModel.fromJson(Map<String, dynamic> json) => BonusSummaryModel(
-        totalBonus: json['total_bonus'] ?? 0,
-        totalTransactions: json['total_transactions'] ?? 0,
-        bonusByLevel: (json['bonus_by_level'] as List<dynamic>?)
-                ?.map((e) => BonusByLevel.fromJson(e))
-                .toList() ??
-            [],
-      );
-}
-
-class BonusByLevel {
-  final int level;
-  final int totalAmount;
-  final int count;
-
-  const BonusByLevel({required this.level, required this.totalAmount, required this.count});
-
-  factory BonusByLevel.fromJson(Map<String, dynamic> json) => BonusByLevel(
-        level: json['level'],
-        totalAmount: json['total_amount'] ?? 0,
-        count: json['count'] ?? 0,
       );
 }
 
