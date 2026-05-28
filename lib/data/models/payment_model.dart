@@ -5,8 +5,6 @@ class TransactionModel {
   final String status;
   final String? confirmedAt;
   final String? createdAt;
-  final String? qrCodeUrl;
-  final String? deepLinkUrl;
 
   const TransactionModel({
     required this.id,
@@ -15,8 +13,6 @@ class TransactionModel {
     required this.status,
     this.confirmedAt,
     this.createdAt,
-    this.qrCodeUrl,
-    this.deepLinkUrl,
   });
 
   int get statusValue {
@@ -69,8 +65,6 @@ class TransactionModel {
         status: json['status'] ?? 'pending',
         confirmedAt: json['confirmed_at'],
         createdAt: json['created_at'],
-        qrCodeUrl: json['midtrans_qr_code_url'],
-        deepLinkUrl: json['midtrans_deeplink_url'],
       );
 
   static int _parseInt(dynamic v) {
@@ -105,13 +99,17 @@ class BankDetailsModel {
 class InitialDepositModel {
   final TransactionModel transaction;
   final BankDetailsModel? bankDetails;
+  final String? snapToken;
+  final String? snapRedirectUrl;
 
   const InitialDepositModel({
     required this.transaction,
     this.bankDetails,
+    this.snapToken,
+    this.snapRedirectUrl,
   });
 
-  bool get isQris => transaction.qrCodeUrl != null;
+  bool get isSnap => snapRedirectUrl != null;
 
   factory InitialDepositModel.fromJson(Map<String, dynamic> json) {
     final data = (json['data'] ?? json) as Map<String, dynamic>;
@@ -120,6 +118,8 @@ class InitialDepositModel {
       bankDetails: data['bank_details'] != null
           ? BankDetailsModel.fromJson(data['bank_details'] as Map<String, dynamic>)
           : null,
+      snapToken: data['snap_token']?.toString(),
+      snapRedirectUrl: data['snap_redirect_url']?.toString(),
     );
   }
 }

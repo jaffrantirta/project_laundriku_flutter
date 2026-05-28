@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:url_launcher/url_launcher.dart';
+import '../payment/snap_webview_screen.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/leaderboard_model.dart';
@@ -179,7 +179,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                 children: [
                   _methodChip('manual_transfer', 'Transfer Bank', setSheetState),
                   const SizedBox(width: 10),
-                  _methodChip('qris', 'QRIS', setSheetState),
+                  _methodChip('gopay', 'GoPay / QRIS', setSheetState),
                 ],
               ),
               const SizedBox(height: 24),
@@ -360,7 +360,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
 
   Widget _buildPaymentView() {
     final payment = _investPayment!;
-    final isQris = payment.isQris;
+    final isSnap = payment.isSnap;
     final bank = payment.bankDetails;
     final amount = payment.transaction.amount;
 
@@ -382,8 +382,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
           const Text('Investasi Dibuat!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
           const SizedBox(height: 6),
           Text(
-            isQris
-                ? 'Scan QR code untuk menyelesaikan pembayaran'
+            isSnap
+                ? 'Selesaikan pembayaran melalui halaman Midtrans Snap'
                 : 'Transfer ke rekening berikut lalu upload bukti',
             style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
             textAlign: TextAlign.center,
@@ -414,49 +414,49 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
               ],
             ),
           ),
-          if (isQris) ...[
-            const SizedBox(height: 20),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.network(
-                payment.transaction.qrCodeUrl!,
-                width: 220,
-                height: 220,
-                fit: BoxFit.contain,
-                loadingBuilder: (_, child, progress) => progress == null
-                    ? child
-                    : const SizedBox(width: 220, height: 220, child: Center(child: CircularProgressIndicator())),
-                errorBuilder: (_, e, s) => const SizedBox(
-                  width: 220,
-                  height: 220,
-                  child: Center(child: Icon(Icons.qr_code_rounded, size: 80, color: AppColors.textSecondary)),
-                ),
+          if (isSnap) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.info.withValues(alpha: 0.07),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.info.withValues(alpha: 0.2)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline_rounded, color: AppColors.info, size: 18),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Pilih metode pembayaran (GoPay, QRIS, dll.) di halaman Snap Midtrans.',
+                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.5),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Scan dengan GoPay, OVO, Dana, atau QRIS lainnya',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
-              textAlign: TextAlign.center,
-            ),
-            if (payment.transaction.deepLinkUrl != null) ...[
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    final uri = Uri.parse(payment.transaction.deepLinkUrl!);
-                    if (await canLaunchUrl(uri)) launchUrl(uri, mode: LaunchMode.externalApplication);
-                  },
-                  icon: const Icon(Icons.open_in_new_rounded),
-                  label: const Text('Buka Aplikasi GoPay'),
-                  style: ElevatedButton.styleFrom(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton.icon(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => SnapWebViewScreen(
+                      snapUrl: payment.snapRedirectUrl!,
+                      title: 'Pembayaran Investasi',
+                    ),
                   ),
                 ),
+                icon: const Icon(Icons.payment_rounded),
+                label: const Text('Bayar Sekarang'),
+                style: ElevatedButton.styleFrom(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
               ),
-            ],
+            ),
           ] else ...[
             if (bank != null) ...[
               const SizedBox(height: 12),
