@@ -5,6 +5,13 @@ class TransactionModel {
   final String status;
   final String? confirmedAt;
   final String? createdAt;
+  final String? paymentMethod;
+  final String? snapRedirectUrl;
+  final String? notes;
+  final String? proofUrl;
+  final BankDetailsModel? bankDetails;
+  final String? businessName;
+  final String? expiredAt;
 
   const TransactionModel({
     required this.id,
@@ -13,6 +20,13 @@ class TransactionModel {
     required this.status,
     this.confirmedAt,
     this.createdAt,
+    this.paymentMethod,
+    this.snapRedirectUrl,
+    this.notes,
+    this.proofUrl,
+    this.bankDetails,
+    this.businessName,
+    this.expiredAt,
   });
 
   int get statusValue {
@@ -58,14 +72,36 @@ class TransactionModel {
     }
   }
 
-  factory TransactionModel.fromJson(Map<String, dynamic> json) => TransactionModel(
-        id: _parseInt(json['id']),
-        type: json['type'] ?? '',
-        amount: _parseInt(json['amount']),
-        status: json['status'] ?? 'pending',
-        confirmedAt: json['confirmed_at'],
-        createdAt: json['created_at'],
-      );
+  bool get isPending => statusValue == 0;
+  bool get isSnap => snapRedirectUrl != null && snapRedirectUrl!.isNotEmpty;
+
+  String get paymentMethodLabel {
+    switch (paymentMethod) {
+      case 'manual_transfer': return 'Transfer Bank';
+      case 'gopay': return 'GoPay / QRIS';
+      case 'snap': return 'Midtrans Snap';
+      default: return paymentMethod ?? '-';
+    }
+  }
+
+  factory TransactionModel.fromJson(Map<String, dynamic> json) {
+    final bankData = json['bank_details'] as Map<String, dynamic>?;
+    return TransactionModel(
+      id: _parseInt(json['id']),
+      type: json['type'] ?? '',
+      amount: _parseInt(json['amount']),
+      status: json['status'] ?? 'pending',
+      confirmedAt: json['confirmed_at'],
+      createdAt: json['created_at'],
+      paymentMethod: json['payment_method'],
+      snapRedirectUrl: json['snap_redirect_url'],
+      notes: json['notes'],
+      proofUrl: json['proof_url'] ?? json['payment_proof'],
+      bankDetails: bankData != null ? BankDetailsModel.fromJson(bankData) : null,
+      businessName: json['business_name'] ?? json['business']?['name'],
+      expiredAt: json['expired_at'],
+    );
+  }
 
   static int _parseInt(dynamic v) {
     if (v == null) return 0;
