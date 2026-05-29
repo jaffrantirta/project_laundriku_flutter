@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/portfolio_model.dart';
 import '../../data/services/api_service.dart';
+import '../../providers/auth_provider.dart';
 import '../../widgets/app_widgets.dart';
+import '../identity/identity_screen.dart';
 import 'portfolio_detail_screen.dart';
 
 class PortfolioScreen extends StatefulWidget {
@@ -24,6 +27,13 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
   }
 
   Future<void> _load() async {
+    final auth = context.read<AuthProvider>();
+    if (auth.balance == null) await auth.loadBalance();
+    final isVerified = auth.balance?.isVerified ?? false;
+    if (!isVerified) {
+      setState(() => _loading = false);
+      return;
+    }
     setState(() => _loading = true);
     try {
       final res = await ApiService.getPortfolio();
@@ -41,30 +51,36 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Portofolio')),
-      body: _loading
-          ? ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: 5,
-              itemBuilder: (_, i) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: ShimmerLoading(height: i == 0 ? 160 : 110, borderRadius: BorderRadius.circular(16)),
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: _load,
-              color: AppColors.primary,
-              child: _portfolio == null
-                  ? const CustomScrollView(
-                      slivers: [
-                        SliverFillRemaining(
-                          child: EmptyState(
-                            title: 'Gagal memuat data',
-                            subtitle: 'Tarik ke bawah untuk mencoba lagi',
-                            icon: Icons.error_outline_rounded,
-                          ),
-                        ),
-                      ],
-                    )
+      body: Consumer<AuthProvider>(
+        builder: (_, auth, __) {
+          final isVerified = auth.balance?.isVerified ?? false;
+          if (!isVerified && !_loading) {
+            return _buildUnverifiedState();
+          }
+          return _loading
+              ? ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: 5,
+                  itemBuilder: (_, i) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: ShimmerLoading(height: i == 0 ? 160 : 110, borderRadius: BorderRadius.circular(16)),
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _load,
+                  color: AppColors.primary,
+                  child: _portfolio == null
+                      ? const CustomScrollView(
+                          slivers: [
+                            SliverFillRemaining(
+                              child: EmptyState(
+                                title: 'Gagal memuat data',
+                                subtitle: 'Tarik ke bawah untuk mencoba lagi',
+                                icon: Icons.error_outline_rounded,
+                              ),
+                            ),
+                          ],
+                        )
                   : CustomScrollView(
                       slivers: [
                         SliverPadding(
@@ -95,7 +111,59 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
                         ),
                       ],
                     ),
+                );
+        },
+      ),
+    );
+  }
+
+  Widget _buildUnverifiedState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: AppColors.warning.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.lock_outline_rounded, size: 40, color: AppColors.warning),
             ),
+            const SizedBox(height: 20),
+            const Text(
+              'Akun Belum Terverifikasi',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Lengkapi verifikasi identitas untuk mengakses portofolio investasi Anda',
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.5),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const IdentityScreen()),
+                ),
+                icon: const Icon(Icons.badge_outlined, size: 18),
+                label: const Text('Verifikasi Sekarang'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

@@ -8,6 +8,7 @@ import '../../data/services/api_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/home_provider.dart';
 import '../../widgets/app_widgets.dart';
+import '../payment/initial_deposit_terms_screen.dart';
 import '../payment/topup_screen.dart';
 import '../payment/transactions_screen.dart';
 import '../withdrawal/withdrawal_screen.dart';
@@ -83,6 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   _buildQuickActions(),
                   const SizedBox(height: 24),
                   _buildVerificationBanner(),
+                  _buildInitialDepositBanner(),
                   const SizedBox(height: 24),
                   _buildBalanceBreakdown(),
                   const SizedBox(height: 24),
@@ -360,6 +362,111 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildInitialDepositBanner() {
+    return Consumer<AuthProvider>(
+      builder: (_, auth, __) {
+        final isVerified = auth.balance?.isVerified ?? false;
+        final hasInitialDeposit = auth.balance?.hasInitialDeposit ?? true;
+        if (!isVerified || hasInitialDeposit) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 24),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF1565C0), Color(0xFF1976D2)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF1565C0).withOpacity(0.3),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.account_balance_rounded, color: Colors.white, size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Deposit Pertama',
+                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15),
+                            ),
+                            Text(
+                              'Daftarkan diri sebagai anggota koperasi',
+                              style: TextStyle(color: Colors.white70, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const InitialDepositTermsScreen()),
+                        ),
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.info_outline_rounded, color: Colors.white, size: 18),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Lakukan deposit pertama untuk terdaftar sebagai anggota koperasi dan mendapatkan akses ke seluruh fitur investasi.',
+                    style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.5),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const TopupScreen()),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: const Color(0xFF1565C0),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
+                      ),
+                      child: const Text('Deposit Sekarang', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 

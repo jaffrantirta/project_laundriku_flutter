@@ -275,8 +275,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _menuItem(IconData icon, String title, String subtitle, VoidCallback onTap, {bool showArrow = true}) {
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(

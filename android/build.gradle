@@ -3,6 +3,11 @@ allprojects {
         google()
         mavenCentral()
     }
+    configurations.all {
+        resolutionStrategy {
+            force 'androidx.browser:browser:1.7.0'
+        }
+    }
 }
 
 rootProject.buildDir = "../build"
@@ -11,6 +16,14 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
+}
+
+gradle.beforeProject { proj ->
+    if (proj.name == 'image_picker_android') {
+        proj.afterEvaluate {
+            proj.dependencies.add('implementation', 'androidx.browser:browser:1.7.0')
+        }
+    }
 }
 
 tasks.register("clean", Delete) {
