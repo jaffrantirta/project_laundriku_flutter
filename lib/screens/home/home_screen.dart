@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/portfolio_model.dart';
+import '../../data/models/referral_model.dart';
 import '../../data/services/api_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/home_provider.dart';
@@ -28,6 +29,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   PortfolioSummaryModel? _portfolioSummary;
   bool? _isVerified; // null = loading, true = verified, false = not verified
+  bool _balanceHidden = false;
 
   @override
   void initState() {
@@ -122,7 +124,7 @@ class _HomeScreenState extends State<HomeScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
-                  'BisnisKu',
+                  'MyBisnis',
                   style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800),
                 ),
                 Text(
@@ -188,14 +190,40 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            Text(
-              CurrencyFormatter.format(auth.balance?.balance ?? 0),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 32,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.5,
-              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Text(
+                    _balanceHidden
+                        ? '••••••••'
+                        : CurrencyFormatter.format(auth.balance?.balance ?? 0),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 32,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => setState(() => _balanceHidden = !_balanceHidden),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      _balanceHidden
+                          ? Icons.visibility_off_rounded
+                          : Icons.visibility_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             Container(height: 1, color: Colors.white.withOpacity(0.2)),
@@ -486,14 +514,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       _balanceStat(
                         'Profit Investasi',
-                        balance != null ? CurrencyFormatter.compact(balance.investmentProfit) : '-',
+                        _balanceHidden ? '••••' : (balance != null ? CurrencyFormatter.compact(balance.investmentProfit) : '-'),
                         AppColors.primary,
                         Icons.trending_up_rounded,
                       ),
                       const SizedBox(width: 12),
                       _balanceStat(
                         'Reward Referral',
-                        balance != null ? CurrencyFormatter.compact(balance.referralReward) : '-',
+                        _balanceHidden ? '••••' : (balance != null ? CurrencyFormatter.compact(balance.referralReward) : '-'),
                         AppColors.accent,
                         Icons.card_giftcard_rounded,
                       ),
@@ -607,77 +635,129 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            AppCard(
-              child: home.topBusinesses.isEmpty
-                  ? const Center(
+            home.topBusinesses.isEmpty
+                ? AppCard(
+                    child: const Center(
                       child: Padding(
                         padding: EdgeInsets.all(16),
                         child: Text('Belum ada bisnis tersedia', style: TextStyle(color: AppColors.textSecondary)),
                       ),
-                    )
-                  : Column(
-                      children: home.topBusinesses.asMap().entries.map((entry) {
-                        final i = entry.key;
-                        final b = entry.value;
-                        return _businessRow(b, i < home.topBusinesses.length - 1);
-                      }).toList(),
                     ),
-            ),
+                  )
+                : SizedBox(
+                    height: 200,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      padding: EdgeInsets.zero,
+                      itemCount: home.topBusinesses.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 12),
+                      itemBuilder: (_, i) => _buildBusinessCarouselCard(home.topBusinesses[i]),
+                    ),
+                  ),
           ],
         );
       },
     );
   }
 
-  Widget _businessRow(business, bool divider) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.business_rounded, color: AppColors.primary, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      business.name,
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      business.category,
-                      style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.success.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  '${business.currentInvestors}/${business.targetInvestors}',
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.success),
-                ),
-              ),
-            ],
-          ),
+  Widget _buildBusinessCarouselCard(BusinessModel business) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const BusinessScreen()),
+      ),
+      child: Container(
+        width: 180,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-        if (divider) const Divider(height: 1),
-      ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              child: business.imageUrl != null && business.imageUrl!.isNotEmpty
+                  ? Image.network(
+                      business.imageUrl!,
+                      height: 110,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _businessImagePlaceholder(),
+                    )
+                  : _businessImagePlaceholder(),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    business.name,
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    business.category,
+                    style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: (business.isOpen ? AppColors.success : AppColors.textHint).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          business.isOpen ? 'Terbuka' : 'Penuh',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: business.isOpen ? AppColors.success : AppColors.textHint,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '${business.currentInvestors}/${business.targetInvestors}',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _businessImagePlaceholder() {
+    return Container(
+      height: 110,
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.primary, AppColors.primaryLight],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: const Center(
+        child: Icon(Icons.business_rounded, color: Colors.white54, size: 40),
+      ),
     );
   }
 

@@ -41,6 +41,15 @@ class BusinessDetailModel {
   final String status;
   final int currentInvestors;
   final int targetInvestors;
+  final String? imageUrl;
+  final String? description;
+  final String? location;
+  final int? investmentAmount;
+  final double? profitSharingPercent;
+  final int? minInvestment;
+  final String? returnPeriod;
+  final String? contactInfo;
+  final String? establishedYear;
   final Map<String, dynamic>? extra;
 
   const BusinessDetailModel({
@@ -50,6 +59,15 @@ class BusinessDetailModel {
     required this.status,
     required this.currentInvestors,
     required this.targetInvestors,
+    this.imageUrl,
+    this.description,
+    this.location,
+    this.investmentAmount,
+    this.profitSharingPercent,
+    this.minInvestment,
+    this.returnPeriod,
+    this.contactInfo,
+    this.establishedYear,
     this.extra,
   });
 
@@ -66,6 +84,15 @@ class BusinessDetailModel {
       status: data['status'] ?? '',
       currentInvestors: _parseInt(data['current_investors']),
       targetInvestors: _parseInt(data['target_investors']),
+      imageUrl: data['image_url'] ?? data['photo_url'] ?? data['image'],
+      description: data['description'],
+      location: data['location'] ?? data['address'],
+      investmentAmount: _parseInt(data['investment_amount'] ?? data['price_per_slot']),
+      profitSharingPercent: _parseDouble(data['profit_sharing_percent'] ?? data['profit_sharing']),
+      minInvestment: _parseInt(data['min_investment']),
+      returnPeriod: data['return_period'] ?? data['tenure'],
+      contactInfo: data['contact'] ?? data['contact_info'] ?? data['phone'],
+      establishedYear: data['established_year']?.toString() ?? data['founded_at'],
       extra: data,
     );
   }
@@ -75,5 +102,12 @@ class BusinessDetailModel {
     if (v is int) return v;
     if (v is double) return v.toInt();
     return (double.tryParse(v.toString()) ?? 0).toInt();
+  }
+
+  static double? _parseDouble(dynamic v) {
+    if (v == null) return null;
+    if (v is double) return v;
+    if (v is int) return v.toDouble();
+    return double.tryParse(v.toString());
   }
 }

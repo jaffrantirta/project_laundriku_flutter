@@ -53,7 +53,7 @@ class InitialDepositTermsScreen extends StatelessWidget {
             const SizedBox(height: 12),
             AppCard(
               child: const Text(
-                'Deposit awal merupakan syarat wajib untuk terdaftar sebagai anggota resmi koperasi BisnisKu. '
+                'Deposit awal merupakan syarat wajib untuk terdaftar sebagai anggota resmi koperasi MyBisnis. '
                 'Dengan menyelesaikan deposit awal, Anda akan mendapatkan akses penuh ke seluruh fitur platform.',
                 style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.6),
               ),
@@ -160,7 +160,7 @@ const _terms = [
   'Deposit awal wajib dilakukan satu kali sebagai syarat pendaftaran anggota koperasi.',
   'Deposit awal bersifat permanen dan menjadi modal awal partisipasi dalam koperasi.',
   'Besaran deposit awal ditentukan oleh pengurus koperasi dan dapat berubah sewaktu-waktu.',
-  'Anggota yang telah melakukan deposit awal berhak menggunakan seluruh fitur platform BisnisKu.',
+  'Anggota yang telah melakukan deposit awal berhak menggunakan seluruh fitur platform MyBisnis.',
   'Informasi detail mengenai besaran dan mekanisme deposit akan diberitahukan melalui notifikasi resmi.',
 ];
 

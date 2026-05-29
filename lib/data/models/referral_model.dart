@@ -144,6 +144,7 @@ class BusinessModel {
   final String status;
   final int currentInvestors;
   final int targetInvestors;
+  final String? imageUrl;
 
   const BusinessModel({
     required this.id,
@@ -152,6 +153,7 @@ class BusinessModel {
     required this.status,
     required this.currentInvestors,
     required this.targetInvestors,
+    this.imageUrl,
   });
 
   bool get isOpen => status == 'open';
@@ -166,6 +168,7 @@ class BusinessModel {
         status: json['status'] ?? 'open',
         currentInvestors: _parseInt(json['current_investors']),
         targetInvestors: _parseInt(json['target_investors']),
+        imageUrl: json['image_url'] ?? json['photo_url'] ?? json['image'],
       );
 
   static int _parseInt(dynamic v) {

@@ -266,84 +266,13 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                           SliverToBoxAdapter(
                             child: Padding(
                               padding: const EdgeInsets.all(16),
-                              child: GradientCard(
-                                colors: const [AppColors.primary, AppColors.primaryLight],
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Container(
-                                          width: 56,
-                                          height: 56,
-                                          decoration: BoxDecoration(
-                                            color: Colors.white.withValues(alpha: 0.2),
-                                            borderRadius: BorderRadius.circular(14),
-                                          ),
-                                          child: const Icon(Icons.business_rounded, color: Colors.white, size: 28),
-                                        ),
-                                        const SizedBox(width: 16),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                _business!.name,
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.w800,
-                                                  fontSize: 18,
-                                                ),
-                                              ),
-                                              Text(
-                                                _business!.category,
-                                                style: const TextStyle(color: Colors.white70, fontSize: 13),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 16),
-                                    const Divider(color: Colors.white24, height: 1),
-                                    const SizedBox(height: 16),
-                                    Row(
-                                      children: [
-                                        _businessStat(
-                                          'Investor',
-                                          '${_business!.currentInvestors}/${_business!.targetInvestors}',
-                                        ),
-                                        const SizedBox(width: 10),
-                                        _businessStat(
-                                          'Status',
-                                          _business!.isOpen ? 'Terbuka' : 'Penuh',
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 12),
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(6),
-                                      child: LinearProgressIndicator(
-                                        value: _business!.investorProgress,
-                                        backgroundColor: Colors.white.withValues(alpha: 0.3),
-                                        color: Colors.white,
-                                        minHeight: 6,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      '${(_business!.investorProgress * 100).toStringAsFixed(0)}% slot terisi',
-                                      style: const TextStyle(color: Colors.white70, fontSize: 12),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                              child: _buildMainCard(),
                             ),
                           ),
                           if (_business!.isOpen)
                             SliverToBoxAdapter(
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                                 child: LoadingButton(
                                   isLoading: _isInvesting,
                                   onPressed: _showInvestSheet,
@@ -559,16 +488,402 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.15),
+          color: AppColors.primary.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(color: Colors.white60, fontSize: 11)),
-            Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+            Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+            Text(value, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 14)),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildMainCard() {
+    final b = _business!;
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.07),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Image
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            child: b.imageUrl != null && b.imageUrl!.isNotEmpty
+                ? Image.network(
+                    b.imageUrl!,
+                    height: 180,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _buildImagePlaceholder(),
+                  )
+                : _buildImagePlaceholder(),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Name + status
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(b.name,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 20,
+                                  color: AppColors.textPrimary)),
+                          const SizedBox(height: 2),
+                          Text(b.category,
+                              style: const TextStyle(
+                                  color: AppColors.textSecondary, fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: (b.isOpen ? AppColors.success : AppColors.textHint)
+                            .withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        b.isOpen ? 'Terbuka' : 'Penuh',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: b.isOpen ? AppColors.success : AppColors.textHint,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                // Location
+                if (b.location != null && b.location!.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on_rounded,
+                          size: 14, color: AppColors.textHint),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(b.location!,
+                            style: const TextStyle(
+                                fontSize: 12, color: AppColors.textSecondary)),
+                      ),
+                    ],
+                  ),
+                ],
+
+                const SizedBox(height: 16),
+                const Divider(height: 1),
+                const SizedBox(height: 16),
+
+                // Investor progress stats
+                Row(
+                  children: [
+                    _businessStat('Investor',
+                        '${b.currentInvestors}/${b.targetInvestors}'),
+                    const SizedBox(width: 10),
+                    _businessStat(
+                        'Status', b.isOpen ? 'Terbuka' : 'Penuh'),
+                    if ((b.investmentAmount ?? 0) > 0) ...[
+                      const SizedBox(width: 10),
+                      _businessStat('Harga/Slot',
+                          CurrencyFormatter.compact(b.investmentAmount!)),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: b.investorProgress,
+                    backgroundColor: AppColors.divider,
+                    color: AppColors.primary,
+                    minHeight: 6,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '${(b.investorProgress * 100).toStringAsFixed(0)}% slot terisi',
+                  style: const TextStyle(
+                      color: AppColors.textSecondary, fontSize: 12),
+                ),
+
+                // Profit sharing + return period chips
+                if (b.profitSharingPercent != null || b.returnPeriod != null) ...[
+                  const SizedBox(height: 16),
+                  const Divider(height: 1),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      if (b.profitSharingPercent != null)
+                        _infoChip(Icons.trending_up_rounded,
+                            'Bagi Hasil',
+                            '${b.profitSharingPercent!.toStringAsFixed(1)}%',
+                            AppColors.success),
+                      if (b.returnPeriod != null && b.returnPeriod!.isNotEmpty)
+                        _infoChip(Icons.calendar_month_rounded,
+                            'Periode Return', b.returnPeriod!, AppColors.info),
+                      if (b.establishedYear != null && b.establishedYear!.isNotEmpty)
+                        _infoChip(Icons.storefront_rounded,
+                            'Berdiri', b.establishedYear!, AppColors.accent),
+                      if (b.contactInfo != null && b.contactInfo!.isNotEmpty)
+                        _infoChip(Icons.phone_rounded,
+                            'Kontak', b.contactInfo!, AppColors.primary),
+                    ],
+                  ),
+                ],
+
+                // Description
+                if (b.description != null && b.description!.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Divider(height: 1),
+                  const SizedBox(height: 16),
+                  const Text('Tentang Bisnis',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w700, fontSize: 14)),
+                  const SizedBox(height: 8),
+                  Text(
+                    b.description!,
+                    style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                        height: 1.6),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoChip(IconData icon, String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.15)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 16),
+          const SizedBox(width: 6),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label,
+                  style: const TextStyle(
+                      fontSize: 10, color: AppColors.textSecondary)),
+              Text(value,
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: color)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInvestmentDetails() {
+    final b = _business!;
+    final hasAmount = (b.investmentAmount ?? 0) > 0;
+    final hasProfit = b.profitSharingPercent != null;
+    final hasReturn = b.returnPeriod != null && b.returnPeriod!.isNotEmpty;
+    final hasMin = (b.minInvestment ?? 0) > 0;
+    if (!hasAmount && !hasProfit && !hasReturn && !hasMin) return const SizedBox.shrink();
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Detail Investasi', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              if (hasAmount)
+                _detailChip(
+                  Icons.payments_rounded,
+                  'Harga per Slot',
+                  CurrencyFormatter.format(b.investmentAmount!),
+                  AppColors.primary,
+                ),
+              if (hasMin)
+                _detailChip(
+                  Icons.account_balance_wallet_rounded,
+                  'Min. Investasi',
+                  CurrencyFormatter.format(b.minInvestment!),
+                  AppColors.info,
+                ),
+              if (hasProfit)
+                _detailChip(
+                  Icons.trending_up_rounded,
+                  'Bagi Hasil',
+                  '${b.profitSharingPercent!.toStringAsFixed(1)}%',
+                  AppColors.success,
+                ),
+              if (hasReturn)
+                _detailChip(
+                  Icons.calendar_month_rounded,
+                  'Periode Return',
+                  b.returnPeriod!,
+                  AppColors.accent,
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _detailChip(IconData icon, String label, String value, Color color) {
+    return Container(
+      width: (MediaQuery.of(context).size.width - 76) / 2,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.15)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+                const SizedBox(height: 2),
+                Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: color)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDescriptionCard() {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Tentang Bisnis', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+          const SizedBox(height: 10),
+          Text(
+            _business!.description!,
+            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.6),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBusinessInfo() {
+    final b = _business!;
+    final rows = <_InfoEntry>[];
+    if (b.location != null && b.location!.isNotEmpty)
+      rows.add(_InfoEntry(Icons.location_on_rounded, 'Lokasi', b.location!));
+    if (b.establishedYear != null && b.establishedYear!.isNotEmpty)
+      rows.add(_InfoEntry(Icons.calendar_today_rounded, 'Berdiri', b.establishedYear!));
+    if (b.contactInfo != null && b.contactInfo!.isNotEmpty)
+      rows.add(_InfoEntry(Icons.phone_rounded, 'Kontak', b.contactInfo!));
+    rows.add(_InfoEntry(Icons.category_rounded, 'Kategori', b.category));
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Informasi Bisnis', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+          const SizedBox(height: 14),
+          ...rows.asMap().entries.map((e) => Column(
+                children: [
+                  _infoRow(e.value.icon, e.value.label, e.value.value),
+                  if (e.key < rows.length - 1) ...[
+                    const SizedBox(height: 10),
+                    const Divider(height: 1),
+                    const SizedBox(height: 10),
+                  ],
+                ],
+              )),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoRow(IconData icon, String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: AppColors.primary, size: 18),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+              const SizedBox(height: 2),
+              Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildImagePlaceholder() {
+    return Container(
+      height: 180,
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.primary, AppColors.primaryLight],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: const Center(
+        child: Icon(Icons.business_rounded, color: Colors.white54, size: 56),
       ),
     );
   }
@@ -577,18 +892,23 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        ShimmerLoading(height: 160, borderRadius: BorderRadius.circular(20)),
+        ShimmerLoading(height: 200, borderRadius: BorderRadius.circular(20)),
         const SizedBox(height: 16),
         ShimmerLoading(height: 120, borderRadius: BorderRadius.circular(16)),
         const SizedBox(height: 12),
+        ShimmerLoading(height: 100, borderRadius: BorderRadius.circular(16)),
+        const SizedBox(height: 12),
         ShimmerLoading(height: 80, borderRadius: BorderRadius.circular(16)),
-        const SizedBox(height: 12),
-        ShimmerLoading(height: 56, borderRadius: BorderRadius.circular(12)),
-        const SizedBox(height: 12),
-        ShimmerLoading(height: 56, borderRadius: BorderRadius.circular(12)),
         const SizedBox(height: 24),
         ShimmerLoading(height: 52, borderRadius: BorderRadius.circular(12)),
       ],
     );
   }
+}
+
+class _InfoEntry {
+  final IconData icon;
+  final String label;
+  final String value;
+  const _InfoEntry(this.icon, this.label, this.value);
 }

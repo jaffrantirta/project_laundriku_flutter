@@ -8,8 +8,8 @@ import 'providers/transaction_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/main_shell.dart';
 
-class BisnisKuApp extends StatelessWidget {
-  const BisnisKuApp({super.key});
+class MyBisnisApp extends StatelessWidget {
+  const MyBisnisApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +21,7 @@ class BisnisKuApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => TransactionProvider()),
       ],
       child: MaterialApp(
-        title: 'BisnisKu',
+        title: 'MyBisnis',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         home: const _AuthGate(),
@@ -82,14 +82,14 @@ class _SplashScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(24),
               ),
               child: const Icon(
-                Icons.local_laundry_service_rounded,
+                Icons.business_center_rounded,
                 color: Colors.white,
                 size: 48,
               ),
             ),
             const SizedBox(height: 20),
             const Text(
-              'BisnisKu',
+              'MyBisnis',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 32,
@@ -99,8 +99,21 @@ class _SplashScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Investasi Bisnis Laundry',
+              'Platform Investasi & Koperasi Digital',
               style: TextStyle(color: Colors.white70, fontSize: 15),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.verified_rounded, color: Colors.white.withOpacity(0.5), size: 11),
+                const SizedBox(width: 4),
+                Text(
+                  'Terdaftar dan berizin resmi  •  Koperasi Sari Sedana',
+                  style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 10),
+                ),
+              ],
             ),
             const SizedBox(height: 48),
             const CircularProgressIndicator(

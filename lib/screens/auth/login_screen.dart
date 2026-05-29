@@ -95,7 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Masuk ke BisnisKu untuk kelola investasi bisnis laundry Anda',
+          'Masuk ke MyBisnis untuk kelola investasi bisnis laundry Anda',
           style: TextStyle(fontSize: 15, color: AppColors.textSecondary, height: 1.5),
         ),
       ],

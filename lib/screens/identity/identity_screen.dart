@@ -383,7 +383,7 @@ class _IdentityScreenState extends State<IdentityScreen> {
           const Text('Verifikasi Identitas', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
           const SizedBox(height: 12),
           const Text(
-            'Lengkapi data identitas Anda untuk dapat melakukan penarikan saldo dan menikmati semua fitur BisnisKu',
+            'Lengkapi data identitas Anda untuk dapat melakukan penarikan saldo dan menikmati semua fitur MyBisnis',
             style: TextStyle(color: AppColors.textSecondary, height: 1.6),
             textAlign: TextAlign.center,
           ),
@@ -672,6 +672,7 @@ class _IdentityScreenState extends State<IdentityScreen> {
             width: file != null ? 2 : 1,
           ),
         ),
+        alignment: Alignment.center,
         child: file != null
             ? ClipRRect(
                 borderRadius: BorderRadius.circular(11),
@@ -693,12 +694,13 @@ class _IdentityScreenState extends State<IdentityScreen> {
               )
             : Column(
                 mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   const Icon(Icons.add_photo_alternate_outlined, size: 32, color: AppColors.textSecondary),
                   const SizedBox(height: 8),
-                  Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                  Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13), textAlign: TextAlign.center),
                   const Text('Ketuk untuk memilih sumber foto',
-                      style: TextStyle(fontSize: 11, color: AppColors.textHint)),
+                      style: TextStyle(fontSize: 11, color: AppColors.textHint), textAlign: TextAlign.center),
                 ],
               ),
       ),

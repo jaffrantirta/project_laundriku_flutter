@@ -56,8 +56,8 @@ class _ReferralScreenState extends State<ReferralScreen> with SingleTickerProvid
 
   void _shareCode(String code) {
     Share.share(
-      'Bergabunglah di BisnisKu! Gunakan kode referral saya: $code\nDowload sekarang dan mulai investasi bisnis laundry bersama saya!',
-      subject: 'Kode Referral BisnisKu',
+      'Bergabunglah di MyBisnis! Gunakan kode referral saya: $code\nDowload sekarang dan mulai investasi bisnis laundry bersama saya!',
+      subject: 'Kode Referral MyBisnis',
     );
   }
 

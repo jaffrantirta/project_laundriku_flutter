@@ -30,15 +30,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Keluar', style: TextStyle(fontWeight: FontWeight.w700)),
-        content: const Text('Yakin ingin keluar dari akun ini?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Batal')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text('Keluar', style: TextStyle(color: Colors.white)),
-          ),
-        ],
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Yakin ingin keluar dari akun ini?'),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+                child: const Text('Keluar', style: TextStyle(color: Colors.white)),
+              ),
+            ),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Batal'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
     if (confirm == true && mounted) {
@@ -264,7 +277,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const Divider(height: 1, indent: 60),
           _menuItem(
             Icons.info_outline_rounded,
-            'Tentang BisnisKu',
+            'Tentang MyBisnis',
             'Versi 1.0.0',
             () {},
             showArrow: false,

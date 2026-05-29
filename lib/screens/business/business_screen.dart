@@ -181,101 +181,143 @@ class _BusinessScreenState extends State<BusinessScreen> {
   }
 
   Widget _buildBusinessCard(BusinessModel biz) {
-    return AppCard(
+    return GestureDetector(
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => GroupDetailScreen(businessId: biz.id, businessName: biz.name),
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(Icons.business_rounded, color: AppColors.primary, size: 26),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(biz.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-                    const SizedBox(height: 2),
-                    Text(biz.category, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: (biz.isOpen ? AppColors.success : AppColors.textHint).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  biz.isOpen ? 'Terbuka' : 'Penuh',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: biz.isOpen ? AppColors.success : AppColors.textSecondary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              const Icon(Icons.people_rounded, size: 14, color: AppColors.textSecondary),
-              const SizedBox(width: 4),
-              Text(
-                '${biz.currentInvestors} / ${biz.targetInvestors} investor',
-                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-              ),
-              const Spacer(),
-              Text(
-                '${(biz.investorProgress * 100).toStringAsFixed(0)}% terisi',
-                style: const TextStyle(fontSize: 12, color: AppColors.textHint),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: biz.investorProgress,
-              backgroundColor: AppColors.divider,
-              color: biz.isOpen ? AppColors.primary : AppColors.textHint,
-              minHeight: 6,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
             ),
-          ),
-          if (biz.isOpen) ...[
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => GroupDetailScreen(businessId: biz.id, businessName: biz.name),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image header
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              child: biz.imageUrl != null && biz.imageUrl!.isNotEmpty
+                  ? Image.network(
+                      biz.imageUrl!,
+                      height: 160,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _imagePlaceholder(),
+                    )
+                  : _imagePlaceholder(),
+            ),
+            // Content
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(biz.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                            const SizedBox(height: 2),
+                            Text(biz.category, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: (biz.isOpen ? AppColors.success : AppColors.textHint).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          biz.isOpen ? 'Terbuka' : 'Penuh',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: biz.isOpen ? AppColors.success : AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                child: const Text('Investasi Sekarang', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Icon(Icons.people_rounded, size: 14, color: AppColors.textSecondary),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${biz.currentInvestors} / ${biz.targetInvestors} investor',
+                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '${(biz.investorProgress * 100).toStringAsFixed(0)}% terisi',
+                        style: const TextStyle(fontSize: 12, color: AppColors.textHint),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: biz.investorProgress,
+                      backgroundColor: AppColors.divider,
+                      color: biz.isOpen ? AppColors.primary : AppColors.textHint,
+                      minHeight: 6,
+                    ),
+                  ),
+                  if (biz.isOpen) ...[
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => GroupDetailScreen(businessId: biz.id, businessName: biz.name),
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: const Text('Investasi Sekarang', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
           ],
-        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _imagePlaceholder() {
+    return Container(
+      height: 160,
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.primary, AppColors.primaryLight],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: const Center(
+        child: Icon(Icons.business_rounded, color: Colors.white54, size: 48),
       ),
     );
   }
