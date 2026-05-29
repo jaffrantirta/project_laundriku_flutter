@@ -70,19 +70,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: 60,
-          height: 60,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppColors.primary, AppColors.primaryLight],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: const Icon(Icons.local_laundry_service_rounded, color: Colors.white, size: 32),
-        ),
+        Image.asset('assets/images/logo.jpg', width: 72, height: 72),
         const SizedBox(height: 24),
         const Text(
           'Selamat Datang',

@@ -117,7 +117,10 @@ class _HomeScreenState extends State<HomeScreen> {
       title: Consumer<AuthProvider>(
         builder: (_, auth, __) => Row(
           children: [
-            const Icon(Icons.local_laundry_service_rounded, color: Colors.white, size: 26),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Image.asset('assets/images/logo.jpg', width: 32, height: 32, fit: BoxFit.cover),
+            ),
             const SizedBox(width: 10),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,

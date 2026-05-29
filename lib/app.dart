@@ -74,33 +74,10 @@ class _SplashScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 90,
-              height: 90,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: const Icon(
-                Icons.business_center_rounded,
-                color: Colors.white,
-                size: 48,
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'MyBisnis',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 32,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Platform Investasi & Koperasi Digital',
-              style: TextStyle(color: Colors.white70, fontSize: 15),
+            Image.asset(
+              'assets/images/logo.jpg',
+              width: 160,
+              height: 160,
             ),
             const SizedBox(height: 16),
             Row(
